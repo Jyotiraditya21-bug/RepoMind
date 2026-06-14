@@ -151,6 +151,13 @@ def load_analysis_payload(repo_id: str) -> dict | None:
     return None
 
 # Endpoints
+@app.get("/")
+def read_root():
+    return {
+        "status": "active",
+        "message": "RepoMind API is online and running successfully. Access the frontend site to analyze repositories."
+    }
+
 @app.get("/demos")
 def get_demos():
     """Returns the list of pre-baked demo repositories."""
