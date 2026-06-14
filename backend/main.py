@@ -50,6 +50,7 @@ DEMOS = [
 # Request & Response schemas
 class AnalyzeRequest(BaseModel):
     repo_url: str
+    device_id: str | None = None
 
 class ChatRequest(BaseModel):
     repo_id: str
@@ -63,20 +64,29 @@ def get_client_ip(request: Request) -> str:
         return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "unknown_ip"
 
-def check_user_limit(client_ip: str) -> bool:
-    """Returns True if the client IP has not exceeded the 5-search limit."""
+def check_user_limit(client_ip: str, device_id: str | None = None) -> bool:
+    """Returns True if neither the client IP nor the device ID has exceeded the 5-search limit."""
     if not os.path.exists(USER_LIMITS_FILE):
         return True
     try:
         with open(USER_LIMITS_FILE, "r") as f:
             limits = json.load(f)
-        return limits.get(client_ip, 0) < USER_SEARCH_LIMIT
+            
+        # Check IP limit
+        if limits.get(client_ip, 0) >= USER_SEARCH_LIMIT:
+            return False
+            
+        # Check device ID limit
+        if device_id and limits.get(device_id, 0) >= USER_SEARCH_LIMIT:
+            return False
+            
+        return True
     except Exception as e:
         print(f"Error checking user limit: {e}")
         return True
 
-def increment_user_counter(client_ip: str):
-    """Increments the search counter for the client IP."""
+def increment_user_counter(client_ip: str, device_id: str | None = None):
+    """Increments the search counter for the client IP and device ID."""
     os.makedirs(CACHE_DIR, exist_ok=True)
     limits = {}
     if os.path.exists(USER_LIMITS_FILE):
@@ -85,7 +95,11 @@ def increment_user_counter(client_ip: str):
                 limits = json.load(f)
         except Exception:
             pass
+            
     limits[client_ip] = limits.get(client_ip, 0) + 1
+    if device_id:
+        limits[device_id] = limits.get(device_id, 0) + 1
+        
     try:
         with open(USER_LIMITS_FILE, "w") as f:
             json.dump(limits, f)
@@ -200,9 +214,9 @@ def analyze_repo(request: AnalyzeRequest, req: Request):
             cached_payload["repo_id"] = repo_id
             return cached_payload
             
-        # 4. Enforce Per-User Search Limit (5 per user/IP)
+        # 4. Enforce Per-User Search Limit (5 per user/IP/Device)
         client_ip = get_client_ip(req)
-        if not check_user_limit(client_ip):
+        if not check_user_limit(client_ip, request.device_id):
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="You have reached your limit of 5 new repository analyses. Deploy your own backend to lift this limit!"
@@ -262,7 +276,7 @@ def analyze_repo(request: AnalyzeRequest, req: Request):
         
         # 10. Increment limit counters
         increment_daily_counter(repo_url)
-        increment_user_counter(client_ip)
+        increment_user_counter(client_ip, request.device_id)
         
         cache_payload["repo_id"] = repo_id
         return cache_payload
