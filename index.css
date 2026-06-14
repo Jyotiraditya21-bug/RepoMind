@@ -342,7 +342,7 @@ header {
 
 /* App Grid Layout */
 .dashboard-grid {
-    display: none;
+    display: grid;
     grid-template-columns: 1.35fr 1fr; /* Custom unbalanced split layout */
     gap: 2rem;
     min-height: 620px;
