@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RepoMind - AI Codebase Onboarding Assistant</title>
+    <title>RepoMind - Premium Codebase Onboarding Assistant</title>
     <meta name="description" content="An AI-powered codebase onboarding assistant that creates dependency graphs, synthesizes architectures, and provides a local RAG codebase chat.">
     
     <!-- Custom Style Sheet -->
@@ -17,10 +17,16 @@
     <header>
         <div class="logo-container">
             <div class="logo-icon">RM</div>
-            <h1>RepoMind</h1>
+            <div>
+                <h1>RepoMind</h1>
+                <div class="status-indicator">
+                    <span class="status-dot online"></span>
+                    <span id="status-text">Cloud Engine Active</span>
+                </div>
+            </div>
         </div>
-        <div style="font-size: 0.85rem; color: var(--text-secondary);">
-            Codebase Onboarding Assistant
+        <div class="limit-indicator">
+            <span class="limit-tag">Analysis Usage: <span id="limit-count">0 / 5</span> new runs</span>
         </div>
     </header>
 
@@ -29,42 +35,118 @@
         <div id="error-banner" class="error-banner"></div>
 
         <!-- Control Panel Card -->
-        <div class="control-card">
+        <div class="control-card fade-in">
             <div class="input-group">
-                <input type="text" id="repo-url-input" class="url-input" placeholder="Paste GitHub Repository URL (e.g., https://github.com/username/repo)..." value="https://github.com/jimmycodes/RepoMind">
+                <input type="text" id="repo-url-input" class="url-input" placeholder="Enter public GitHub Repository URL (e.g. https://github.com/fastapi/fastapi)..." value="https://github.com/jimmycodes/RepoMind">
                 <button id="analyze-btn" class="btn">
-                    <span>Analyze Repository</span>
+                    <span>Analyze Codebase</span>
                 </button>
             </div>
             
             <div class="demo-group">
-                <span class="demo-label">Pre-baked Demos (Instant & Free):</span>
+                <span class="demo-label">⚡ Pre-baked Demos (Instant & Free):</span>
                 <div id="demo-buttons-container" class="demo-group" style="display:inline-flex;">
                     <!-- Demo buttons will be dynamically injected here -->
+                </div>
+            </div>
+            
+            <div id="recent-group" class="demo-group" style="display:none;">
+                <span class="demo-label">🕰️ Recently Analyzed:</span>
+                <div id="recent-buttons-container" class="demo-group" style="display:inline-flex;">
+                    <!-- Recent buttons will be dynamically injected here -->
                 </div>
             </div>
         </div>
 
         <!-- Loading / Status Panel -->
         <div id="loading-panel" class="loading-panel">
-            <div class="spinner"></div>
-            <div id="loading-text" class="loading-text">Analyzing codebase...</div>
-            <div id="loading-subtext" class="loading-subtext">This might take up to a minute for new repositories while running analysis nodes.</div>
+            <div class="loading-animation-container">
+                <div class="spinner"></div>
+                <div class="pulsing-glow"></div>
+            </div>
+            <div id="loading-text" class="loading-text">Parsing repository structure...</div>
+            <div id="loading-subtext" class="loading-subtext">Compiling dependencies and building AST import maps locally. This takes up to 45 seconds for new repositories.</div>
         </div>
 
         <!-- Main Dashboard Grid -->
-        <div id="dashboard-grid" class="dashboard-grid">
-            
-            <!-- Left Panel: Dependency Graph -->
-            <div class="dashboard-panel">
-                <div class="panel-header">
-                    <span class="panel-title">Interactive Dependency Graph</span>
-                    <span style="font-size: 0.8rem; color: var(--text-secondary);" id="selected-node-info">Scroll to zoom | Drag to pan</span>
+        <div id="dashboard-wrapper" class="dashboard-wrapper" style="display: none;">
+            <!-- Premium Summary Card -->
+            <div class="dashboard-summary-card">
+                <div class="repo-meta-details">
+                    <div class="meta-main">
+                        <span class="repo-icon-octo">📂</span>
+                        <span class="repo-name-label" id="summary-repo-name">Repository: Loading...</span>
+                    </div>
+                    <div class="repo-stats-row">
+                        <span class="repo-stat-item">📁 <strong id="summary-total-files">0</strong> files</span>
+                        <span class="repo-stat-item">🔗 <strong id="summary-total-imports">0</strong> imports</span>
+                        <span class="repo-stat-item">⚡ <strong id="summary-density">0%</strong> density</span>
+                    </div>
                 </div>
-                <div class="graph-container">
-                    <div id="graph-canvas"></div>
+                <div class="language-distribution">
+                    <div class="lang-text-label">Language Breakdown</div>
+                    <div id="lang-bar-container" class="lang-bar-container"></div>
+                    <div id="lang-legend-container" class="lang-legend-container"></div>
                 </div>
             </div>
+
+            <div id="dashboard-grid" class="dashboard-grid">
+                
+                <!-- Left Panel: Dependency Graph Map -->
+                <div class="dashboard-panel">
+                    <div class="panel-header">
+                        <div>
+                            <span class="panel-title">Interactive Dependency Graph</span>
+                            <div class="panel-subtitle">Double-click canvas to center | Click nodes to inspect</div>
+                        </div>
+                        <div class="graph-search-container">
+                            <input type="text" id="graph-search-input" class="graph-search-input" placeholder="🔍 Search file...">
+                            <div id="graph-search-results" class="graph-search-results"></div>
+                        </div>
+                        <div class="stats-badges">
+                            <span class="badge" id="badge-files">Files: 0</span>
+                            <span class="badge" id="badge-links">Imports: 0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="graph-container">
+                        <!-- Vis.js canvas -->
+                        <div id="graph-canvas"></div>
+                        
+                        <!-- Floating Controls Overlay -->
+                        <div class="graph-controls-panel">
+                            <button id="graph-btn-zoom-in" class="graph-control-btn" title="Zoom In">＋</button>
+                            <button id="graph-btn-zoom-out" class="graph-control-btn" title="Zoom Out">－</button>
+                            <button id="graph-btn-fit" class="graph-control-btn" title="Fit to Screen">⛶</button>
+                            <button id="graph-btn-physics" class="graph-control-btn active" title="Toggle Physics (Freeze)">⚛</button>
+                        </div>
+
+                        <!-- Directory Legend Overlay -->
+                        <div id="graph-legend" class="graph-legend-overlay">
+                            <div class="legend-title">Directory Legend</div>
+                            <div id="legend-items" class="legend-items"></div>
+                        </div>
+                        
+                        <!-- Figma-style Node Inspector overlay -->
+                        <div id="inspector-panel" class="inspector-panel">
+                            <div class="inspector-close" id="inspector-close-btn">&times;</div>
+                            <div class="inspector-title" id="inspector-title">backend/agent.py</div>
+                            <span class="inspector-badge" id="inspector-lang-badge">python</span>
+                            <div class="inspector-meta" id="inspector-meta">Degree: 4 | In-Degree: 2 | Out-Degree: 2</div>
+                            <div class="inspector-desc" id="inspector-desc">File summary goes here...</div>
+                            
+                            <div class="inspector-subtitle">Imports (Depends On)</div>
+                            <div class="inspector-tags" id="inspector-imports">
+                                <!-- Injected import list -->
+                            </div>
+                            
+                            <div class="inspector-subtitle">Imported By (Used In)</div>
+                            <div class="inspector-tags" id="inspector-imported-by">
+                                <!-- Injected imported-by list -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
             <!-- Right Panel: Onboarding & Chat Tab System -->
             <div class="dashboard-panel">
@@ -74,13 +156,13 @@
                 </div>
 
                 <!-- Tab 1: Architecture & Guide -->
-                <div id="tab-content-overview" class="tab-content active">
+                <div id="tab-content-overview" class="tab-content active scroll-reveal">
                     <div>
-                        <div class="arch-section-title">Architecture Overview</div>
+                        <div class="arch-section-title">Architecture Summary</div>
                         <p id="architecture-overview-text" class="overview-text">Loading overview...</p>
                     </div>
                     <div>
-                        <div class="arch-section-title">Onboarding Start Here Guide</div>
+                        <div class="arch-section-title">Onboarding "Start Here" Guide</div>
                         <div id="start-here-container" class="start-here-list">
                             <!-- Injected start-here modules -->
                         </div>
@@ -92,18 +174,17 @@
                     <div class="chat-container">
                         <div id="chat-messages-container" class="chat-messages">
                             <div class="chat-message assistant">
-                                Ask me anything about the codebase! I retrieve relevant modules locally and answer using the RAG model.
+                                Ask me anything about this repository! I retrieve relevant local modules and answer using the RAG model.
                             </div>
                         </div>
                         <div class="chat-input-area">
-                            <input type="text" id="chat-input-field" class="chat-input" placeholder="Ask a question about this repository (e.g. How does main.py work?)...">
+                            <input type="text" id="chat-input-field" class="chat-input" placeholder="Ask a question (e.g., How does clone_repo work?)...">
                             <button id="chat-send-btn" class="btn" style="padding: 0.5rem 1.25rem;">Send</button>
                         </div>
                     </div>
                 </div>
 
             </div>
-
         </div>
     </main>
 
