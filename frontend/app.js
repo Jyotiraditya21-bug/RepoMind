@@ -202,15 +202,15 @@ function renderDependencyGraph(graphData) {
             size: size,
             shape: 'dot',
             color: {
-                background: '#1F2937',
-                border: '#6366F1',
+                background: '#FFFFFF',
+                border: '#5F7257',
                 highlight: {
-                    background: '#6366F1',
-                    border: '#8B5CF6'
+                    background: '#FAF9F6',
+                    border: '#E07A5F'
                 }
             },
             font: {
-                color: '#F3F4F6',
+                color: '#2D332F',
                 face: 'Plus Jakarta Sans',
                 size: 13
             }
@@ -224,8 +224,8 @@ function renderDependencyGraph(graphData) {
             to: edge.to,
             arrows: 'to',
             color: {
-                color: 'rgba(99, 102, 241, 0.35)',
-                highlight: '#8B5CF6'
+                color: 'rgba(95, 114, 87, 0.35)',
+                highlight: '#E07A5F'
             },
             width: 1.5
         };
