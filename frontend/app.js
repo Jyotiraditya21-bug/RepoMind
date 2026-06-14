@@ -1,7 +1,7 @@
 // Auto-detect API host (local vs deployed)
 const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:8000'
-    : 'https://repomind-backend.onrender.com'; // Replace with your actual Render service URL when deployed
+    : 'https://jimmy2110-repomind-backend.hf.space'; // Replace with your actual HF Space URL when deployed
 
 let currentRepoId = null;
 let networkInstance = null;
