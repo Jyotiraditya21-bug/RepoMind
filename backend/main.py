@@ -220,7 +220,7 @@ def analyze_repo(request: AnalyzeRequest, req: Request):
         if not file_paths:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No Python files found in this repository. Currently, only Python repositories are supported."
+                detail="No supported code files found in this repository. RepoMind supports Python, JS/TS, Go, Rust, Java, C#, and C/C++."
             )
             
         # 7. Build Dependency Graph

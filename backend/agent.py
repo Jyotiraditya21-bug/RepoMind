@@ -105,11 +105,25 @@ def summarizer_node(state: AgentState) -> Dict[str, Any]:
                 # Read first 150 lines/10000 chars to avoid token limit issues
                 code_content = f.read(10000)
                 
+            # Detect language extension for markdown block
+            _, ext = os.path.splitext(rel_path)
+            lang = ext.strip(".").lower()
+            if lang in {"js", "jsx", "ts", "tsx"}:
+                lang = "javascript"
+            elif lang in {"cpp", "c", "h", "hpp", "cc"}:
+                lang = "cpp"
+            elif lang == "rs":
+                lang = "rust"
+            elif lang == "cs":
+                lang = "csharp"
+            elif lang == "py":
+                lang = "python"
+                
             system_prompt = (
                 "You are an expert code summarizer. Describe the role/purpose of the following file "
                 "within the codebase in 1-2 concise sentences. Be extremely direct."
             )
-            user_prompt = f"File Path: {rel_path}\n\nCode Content:\n```python\n{code_content}\n```"
+            user_prompt = f"File Path: {rel_path}\n\nCode Content:\n```{lang}\n{code_content}\n```"
             
             # Estimate: ~2500 input tokens, ~40 output tokens = $0.00040
             response = llm.invoke([
