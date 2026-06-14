@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RepoMind - AI Codebase Onboarding Assistant</title>
+    <meta name="description" content="An AI-powered codebase onboarding assistant that creates dependency graphs, synthesizes architectures, and provides a local RAG codebase chat.">
+    
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="index.css">
+    
+    <!-- Vis-network CDN for dependency graph rendering -->
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+</head>
+<body>
+
+    <header>
+        <div class="logo-container">
+            <div class="logo-icon">RM</div>
+            <h1>RepoMind</h1>
+        </div>
+        <div style="font-size: 0.85rem; color: var(--text-secondary);">
+            Codebase Onboarding Assistant
+        </div>
+    </header>
+
+    <main class="main-container">
+        <!-- Error Banner -->
+        <div id="error-banner" class="error-banner"></div>
+
+        <!-- Control Panel Card -->
+        <div class="control-card">
+            <div class="input-group">
+                <input type="text" id="repo-url-input" class="url-input" placeholder="Paste GitHub Repository URL (e.g., https://github.com/username/repo)..." value="https://github.com/jimmycodes/RepoMind">
+                <button id="analyze-btn" class="btn">
+                    <span>Analyze Repository</span>
+                </button>
+            </div>
+            
+            <div class="demo-group">
+                <span class="demo-label">Pre-baked Demos (Instant & Free):</span>
+                <div id="demo-buttons-container" class="demo-group" style="display:inline-flex;">
+                    <!-- Demo buttons will be dynamically injected here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading / Status Panel -->
+        <div id="loading-panel" class="loading-panel">
+            <div class="spinner"></div>
+            <div id="loading-text" class="loading-text">Analyzing codebase...</div>
+            <div id="loading-subtext" class="loading-subtext">This might take up to a minute for new repositories while running analysis nodes.</div>
+        </div>
+
+        <!-- Main Dashboard Grid -->
+        <div id="dashboard-grid" class="dashboard-grid">
+            
+            <!-- Left Panel: Dependency Graph -->
+            <div class="dashboard-panel">
+                <div class="panel-header">
+                    <span class="panel-title">Interactive Dependency Graph</span>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Scroll to zoom | Drag to pan</span>
+                </div>
+                <div class="graph-container">
+                    <div id="graph-canvas"></div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Onboarding & Chat Tab System -->
+            <div class="dashboard-panel">
+                <div class="tab-headers">
+                    <button id="tab-btn-overview" class="tab-btn active" onclick="switchTab('overview')">Architecture & Guide</button>
+                    <button id="tab-btn-chat" class="tab-btn" onclick="switchTab('chat')">Codebase Q&A Chat</button>
+                </div>
+
+                <!-- Tab 1: Architecture & Guide -->
+                <div id="tab-content-overview" class="tab-content active">
+                    <div>
+                        <div class="arch-section-title">Architecture Overview</div>
+                        <p id="architecture-overview-text" class="overview-text">Loading overview...</p>
+                    </div>
+                    <div>
+                        <div class="arch-section-title">Onboarding Start Here Guide</div>
+                        <div id="start-here-container" class="start-here-list">
+                            <!-- Injected start-here modules -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Codebase Chat -->
+                <div id="tab-content-chat" class="tab-content">
+                    <div class="chat-container">
+                        <div id="chat-messages-container" class="chat-messages">
+                            <div class="chat-message assistant">
+                                Ask me anything about the codebase! I retrieve relevant modules locally and answer using the RAG model.
+                            </div>
+                        </div>
+                        <div class="chat-input-area">
+                            <input type="text" id="chat-input-field" class="chat-input" placeholder="Ask a question about this repository (e.g. How does main.py work?)...">
+                            <button id="chat-send-btn" class="btn" style="padding: 0.5rem 1.25rem;">Send</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- App Logic Script -->
+    <script src="app.js"></script>
+</body>
+</html>
