@@ -2,29 +2,29 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 
 :root {
-    --bg-main: #F4F1EA;              /* Warm Khadi / Linen Cream */
-    --bg-card: #FAF9F6;              /* Soft Cream White */
-    --border-color: rgba(95, 114, 87, 0.15); /* Muted Sage Green Border */
-    --border-glow: rgba(224, 122, 95, 0.35);  /* Soft Terracotta Glow */
+    --bg-main: #F5F2EB;              /* Rich Warm Khadi Cream */
+    --bg-card: #FAF9F6;              /* Linen White */
+    --border-color: rgba(95, 114, 87, 0.12); /* Delicate Muted Sage Border */
+    --border-glow: rgba(224, 122, 95, 0.28);  /* Soft Terracotta Glow */
     
-    --primary: #5F7257;              /* Creamy Sage / Olive Green */
-    --primary-glow: rgba(95, 114, 87, 0.1);
-    --primary-hover: #4C5B46;
+    --primary: #4A5B43;              /* Rich Forest-Sage Olive */
+    --primary-glow: rgba(74, 91, 67, 0.08);
+    --primary-hover: #3E4D38;
     
-    --secondary: #E07A5F;            /* Warm Terracotta Peach Orange */
-    --accent: #E07A5F;
-    --accent-error: #C94A29;         /* Muted Burnt Orange Error */
+    --secondary: #DC7659;            /* Smooth Rose Terracotta */
+    --accent: #DC7659;
+    --accent-error: #B73E21;         /* Deep Burnt Orange Error */
     
-    --text-primary: #2D332F;          /* Deep Soft Charcoal-Green */
-    --text-secondary: #6B7570;        /* Muted Sage Gray */
-    --text-muted: #9AA59F;            /* Muted Light Olive Gray */
+    --text-primary: #252A27;          /* High Contrast Charcoal-Green */
+    --text-secondary: #5F6C65;        /* Medium Sage Gray */
+    --text-muted: #8E9B94;            /* Soft Light Olive Gray */
     
     --font-heading: 'Outfit', sans-serif;
     --font-body: 'Plus Jakarta Sans', sans-serif;
     
-    --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); /* Ultra-smooth custom transition curve */
-    --shadow-soft: 0 4px 20px rgba(95, 114, 87, 0.04);
-    --shadow-hover: 0 10px 30px rgba(95, 114, 87, 0.08);
+    --transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    --shadow-soft: 0 4px 24px rgba(74, 91, 67, 0.03), 0 1px 2px rgba(0,0,0,0.01);
+    --shadow-hover: 0 16px 48px rgba(74, 91, 67, 0.08), 0 2px 8px rgba(0,0,0,0.02);
 }
 
 * {
@@ -35,6 +35,8 @@
 
 body {
     background-color: var(--bg-main);
+    background-image: radial-gradient(rgba(95, 114, 87, 0.07) 1.5px, transparent 1.5px);
+    background-size: 24px 24px;
     color: var(--text-primary);
     font-family: var(--font-body);
     min-height: 100vh;
@@ -109,12 +111,14 @@ header {
 
 .logo-container h1 {
     font-family: var(--font-heading);
-    font-size: 1.4rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    background: linear-gradient(to right, var(--primary), var(--secondary));
+    font-size: 1.45rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    background: linear-gradient(120deg, var(--primary) 0%, var(--secondary) 50%, var(--primary) 100%);
+    background-size: 200% auto;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    animation: gradient-shift 6s linear infinite;
 }
 
 .status-indicator {
@@ -384,10 +388,14 @@ header {
 
 .panel-title {
     font-family: var(--font-heading);
-    font-size: 1.15rem;
+    font-size: 1.25rem;
     font-weight: 700;
-    color: var(--text-primary);
-    letter-spacing: -0.01em;
+    color: var(--primary);
+    letter-spacing: -0.02em;
+    background: linear-gradient(120deg, var(--primary) 0%, var(--secondary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
 }
 
 .panel-subtitle {
@@ -602,13 +610,30 @@ header {
 /* Onboarding Guides with slide-in scroll reveal effect */
 .arch-section-title {
     font-family: var(--font-heading);
-    font-size: 1.05rem;
+    font-size: 1.15rem;
     font-weight: 700;
+    letter-spacing: 0.03em;
     color: var(--primary);
-    margin-bottom: 0.65rem;
-    border-bottom: 2px solid var(--primary-glow);
-    padding-bottom: 0.3rem;
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.4rem;
     display: inline-block;
+    position: relative;
+}
+
+.arch-section-title::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 32px;
+    height: 3px;
+    background: var(--secondary);
+    border-radius: 2px;
+    transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.arch-section-title:hover::after {
+    width: 64px;
 }
 
 .overview-text {
@@ -1205,5 +1230,267 @@ header {
 @keyframes float {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-3px); }
+}
+
+/* -------------------------------------------------------------
+   Phase G: Ultimate Style & Animation Makeover Styles
+   ------------------------------------------------------------- */
+
+/* Ambient Glowing Circles */
+.ambient-glow {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(130px);
+    z-index: -2;
+    pointer-events: none;
+    opacity: 0.32;
+    transition: all 1s ease;
+}
+
+.glow-1 {
+    width: 450px;
+    height: 450px;
+    background: radial-gradient(circle, var(--secondary) 0%, transparent 80%);
+    top: -50px;
+    left: 8%;
+    animation: float-glow-1 22s infinite alternate ease-in-out;
+}
+
+.glow-2 {
+    width: 550px;
+    height: 550px;
+    background: radial-gradient(circle, var(--primary) 0%, transparent 80%);
+    bottom: -100px;
+    right: 5%;
+    animation: float-glow-2 26s infinite alternate ease-in-out;
+}
+
+@keyframes float-glow-1 {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(60px, 40px) scale(1.1); }
+}
+
+@keyframes float-glow-2 {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(-80px, -60px) scale(0.95); }
+}
+
+@keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Card Spring Hover Effects */
+.control-card, .dashboard-panel, .dashboard-summary-card {
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                box-shadow 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                border-color 0.4s ease;
+}
+
+.control-card:hover, .dashboard-panel:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 16px 36px rgba(95, 114, 87, 0.08);
+    border-color: rgba(224, 122, 95, 0.35);
+}
+
+.dashboard-summary-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px rgba(95, 114, 87, 0.06);
+    border-color: rgba(224, 122, 95, 0.45);
+}
+
+/* Icon SVGs animations */
+.animated-folder {
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.dashboard-summary-card:hover .animated-folder {
+    transform: scale(1.2) rotate(-6deg);
+}
+
+.icon-svg {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.repo-stat-item:hover .icon-svg {
+    transform: scale(1.22) translateY(-1px);
+    color: var(--secondary);
+}
+
+/* Checklist Progression Bar */
+.checklist-progress-wrapper {
+    background: #FFFFFF;
+    border: 1px solid var(--border-color);
+    border-radius: 0.65rem;
+    padding: 0.85rem 1.15rem;
+    margin-bottom: 1.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.01);
+}
+
+.checklist-progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.progress-label {
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.progress-percent {
+    color: var(--secondary);
+    font-family: var(--font-heading);
+}
+
+.progress-bar-track {
+    background: rgba(0, 0, 0, 0.05);
+    height: 7px;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.01);
+}
+
+.progress-bar-fill {
+    background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+    height: 100%;
+    width: 0%;
+    border-radius: 4px;
+    transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Start-here checklist interactive status */
+.start-here-item {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.25rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.start-here-item.checked {
+    background: rgba(95, 114, 87, 0.03) !important;
+    border-color: rgba(95, 114, 87, 0.25) !important;
+    box-shadow: none !important;
+}
+
+.start-here-item.checked .file-path {
+    text-decoration: line-through;
+    color: var(--text-muted);
+    opacity: 0.65;
+}
+
+.start-here-item.checked .file-reason {
+    color: var(--text-muted);
+    opacity: 0.65;
+}
+
+/* Interactive Check Indicator Circle */
+.start-here-item::after {
+    content: '';
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    transition: var(--transition);
+    background: transparent;
+    flex-shrink: 0;
+}
+
+.start-here-item:hover::after {
+    border-color: var(--secondary);
+    background: rgba(224, 122, 95, 0.05);
+}
+
+.start-here-item.checked::after {
+    content: '✓';
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #FAF9F6;
+    font-size: 0.8rem;
+    font-weight: bold;
+    transform: scale(1.05);
+    box-shadow: 0 2px 5px rgba(95, 114, 87, 0.2);
+}
+
+/* Sliding Transitional Tabswitching */
+.tab-content {
+    display: none;
+    opacity: 0;
+    transform: translateY(10px) scale(0.995);
+    transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tab-content.active {
+    display: flex;
+    animation: tab-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes tab-enter {
+    from { opacity: 0; transform: translateY(10px) scale(0.995); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Bouncy chat bubbles */
+.chat-message {
+    transform-origin: bottom right;
+    animation: bubble-bounce 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.chat-message.assistant {
+    transform-origin: bottom left;
+}
+
+@keyframes bubble-bounce {
+    from { opacity: 0; transform: scale(0.85) translateY(15px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Pulsing loader status glow */
+.spinner {
+    border-top-color: var(--secondary);
+    box-shadow: 0 0 10px rgba(224, 122, 95, 0.2);
+}
+
+/* -------------------------------------------------------------
+   Middle-out Focus Border for Inputs
+   ------------------------------------------------------------- */
+.input-wrapper {
+    position: relative;
+    display: flex;
+    flex-grow: 1;
+}
+
+.focus-border {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+
+.url-input:focus ~ .focus-border,
+.chat-input:focus ~ .focus-border {
+    transform: scaleX(1);
 }
 

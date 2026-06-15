@@ -13,6 +13,9 @@
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 </head>
 <body>
+    <!-- Floating Ambient Glow Backdrop Elements -->
+    <div class="ambient-glow glow-1"></div>
+    <div class="ambient-glow glow-2"></div>
 
     <header>
         <div class="logo-container">
@@ -37,7 +40,10 @@
         <!-- Control Panel Card -->
         <div class="control-card fade-in">
             <div class="input-group">
-                <input type="text" id="repo-url-input" class="url-input" placeholder="Enter public GitHub Repository URL (e.g. https://github.com/fastapi/fastapi)..." value="https://github.com/jimmycodes/RepoMind">
+                <div class="input-wrapper">
+                    <input type="text" id="repo-url-input" class="url-input" placeholder="Enter public GitHub Repository URL (e.g. https://github.com/fastapi/fastapi)..." value="https://github.com/jimmycodes/RepoMind">
+                    <span class="focus-border"></span>
+                </div>
                 <button id="analyze-btn" class="btn">
                     <span>Analyze Codebase</span>
                 </button>
@@ -65,16 +71,35 @@
         <!-- Main Dashboard Grid -->
         <div id="dashboard-wrapper" class="dashboard-wrapper" style="display: none;">
             <!-- Premium Summary Card -->
-            <div class="dashboard-summary-card">
+            <div class="dashboard-summary-card scroll-reveal">
                 <div class="repo-meta-details">
                     <div class="meta-main">
-                        <span class="repo-icon-octo">📂</span>
+                        <span class="repo-icon-octo">
+                            <svg class="animated-folder" viewBox="0 0 24 24" width="24" height="24" style="vertical-align: middle;">
+                                <path fill="#5F7257" d="M19.5 5.5h-7l-2-2h-6.5C3.12 3.5 2 4.62 2 6v12c0 1.38 1.12 2.5 2.5 2.5h15c1.38 0 2.5-1.12 2.5-2.5v-10c0-1.38-1.12-2.5-2.5-2.5zM4 5.5h3.62l2 2H19.5c.28 0 .5.22.5.5v2.5H4V5.5zm16 12.5c0 .28-.22.5-.5.5h-15c-.28 0-.5-.22-.5-.5v-6h16v6z"/>
+                            </svg>
+                        </span>
                         <span class="repo-name-label" id="summary-repo-name">Repository: Loading...</span>
                     </div>
                     <div class="repo-stats-row">
-                        <span class="repo-stat-item">📁 <strong id="summary-total-files">0</strong> files</span>
-                        <span class="repo-stat-item">🔗 <strong id="summary-total-imports">0</strong> imports</span>
-                        <span class="repo-stat-item">⚡ <strong id="summary-density">0%</strong> density</span>
+                        <span class="repo-stat-item">
+                            <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" style="vertical-align: -2px; margin-right: 4px;">
+                                <path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                            </svg>
+                            <strong id="summary-total-files">0</strong> files
+                        </span>
+                        <span class="repo-stat-item">
+                            <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" style="vertical-align: -2px; margin-right: 4px;">
+                                <path fill="currentColor" d="M17 7h-4v2h4c1.65 0 3 1.35 3 3s-1.35 3-3 3h-4v2h4c2.76 0 5-2.24 5-5s-2.24-5-5-5zm-6 8H7c-1.65 0-3-1.35-3-3s1.35-3 3-3h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-2zm-3-4h8v2H8z"/>
+                            </svg>
+                            <strong id="summary-total-imports">0</strong> imports
+                        </span>
+                        <span class="repo-stat-item">
+                            <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" style="vertical-align: -2px; margin-right: 4px;">
+                                <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2h2v-1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                            </svg>
+                            <strong id="summary-density">0%</strong> density
+                        </span>
                     </div>
                 </div>
                 <div class="language-distribution">
@@ -87,7 +112,7 @@
             <div id="dashboard-grid" class="dashboard-grid">
                 
                 <!-- Left Panel: Dependency Graph Map -->
-                <div class="dashboard-panel">
+                <div class="dashboard-panel scroll-reveal">
                     <div class="panel-header">
                         <div>
                             <span class="panel-title">Interactive Dependency Graph</span>
@@ -142,8 +167,7 @@
                     </div>
                 </div>
 
-            <!-- Right Panel: Onboarding & Chat Tab System -->
-            <div class="dashboard-panel">
+            <div class="dashboard-panel scroll-reveal">
                 <div class="tab-headers">
                     <button id="tab-btn-overview" class="tab-btn active" onclick="switchTab('overview')">Architecture & Guide</button>
                     <button id="tab-btn-chat" class="tab-btn" onclick="switchTab('chat')">Codebase Q&A Chat</button>
@@ -157,6 +181,18 @@
                     </div>
                     <div>
                         <div class="arch-section-title">Onboarding "Start Here" Guide</div>
+                        
+                        <!-- Checklist Progress Tracker -->
+                        <div class="checklist-progress-wrapper">
+                            <div class="checklist-progress-info">
+                                <span class="progress-label">Guide Progress</span>
+                                <span id="progress-percent" class="progress-percent">0% Completed</span>
+                            </div>
+                            <div class="progress-bar-track">
+                                <div id="progress-fill" class="progress-bar-fill" style="width: 0%"></div>
+                            </div>
+                        </div>
+
                         <div id="start-here-container" class="start-here-list">
                             <!-- Injected start-here modules -->
                         </div>
@@ -172,7 +208,10 @@
                             </div>
                         </div>
                         <div class="chat-input-area">
-                            <input type="text" id="chat-input-field" class="chat-input" placeholder="Ask a question (e.g., How does clone_repo work?)...">
+                            <div class="input-wrapper">
+                                <input type="text" id="chat-input-field" class="chat-input" placeholder="Ask a question (e.g., How does clone_repo work?)...">
+                                <span class="focus-border"></span>
+                            </div>
                             <button id="chat-send-btn" class="btn" style="padding: 0.5rem 1.25rem;">Send</button>
                         </div>
                     </div>
