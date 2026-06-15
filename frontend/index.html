@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RepoMind - Premium Codebase Onboarding Assistant</title>
-    <meta name="description" content="An AI-powered codebase onboarding assistant that creates dependency graphs, synthesizes architectures, and provides a local RAG codebase chat.">
+    <title>RepoMind - Multi-Agent Codebase Onboarding & Architecture Synthesis</title>
+    <meta name="description" content="An orchestrator of collaborative AI agents (Summarizer, Architect, Critic) that parses structures, resolves dependencies, and performs RAG code Q&A.">
     
     <!-- Custom Style Sheet -->
     <link rel="stylesheet" href="index.css">
@@ -17,31 +17,30 @@
     <div class="ambient-glow glow-1"></div>
     <div class="ambient-glow glow-2"></div>
 
-    <header>
-        <div class="logo-container">
-            <div class="logo-icon">RM</div>
-            <div>
-                <h1>RepoMind</h1>
-                <div class="status-indicator">
-                    <span class="status-dot online"></span>
-                    <span id="status-text">Cloud Engine Active</span>
-                </div>
+    <main class="main-container">
+        <!-- Floating Logo Heading in Main Layout (No Header Banner Block) -->
+        <div class="logo-wrapper fade-in">
+            <a href="/" class="funky-logo">
+                <div class="logo-line-1">Repo</div>
+                <div class="logo-line-2">Mind</div>
+            </a>
+            <div class="status-indicator">
+                <span class="status-dot online"></span>
+                <span id="status-text">LangGraph Multi-Agent Engine Active</span>
+            </div>
+            <div class="limit-indicator">
+                <span class="limit-tag">Analysis Usage: <span id="limit-count">0 / 5</span> new runs</span>
             </div>
         </div>
-        <div class="limit-indicator">
-            <span class="limit-tag">Analysis Usage: <span id="limit-count">0 / 5</span> new runs</span>
-        </div>
-    </header>
 
-    <main class="main-container">
         <!-- Error Banner -->
         <div id="error-banner" class="error-banner"></div>
 
         <!-- Control Panel Card -->
         <div class="control-card fade-in">
             <div class="input-group">
-                <div class="input-wrapper">
-                    <input type="text" id="repo-url-input" class="url-input" placeholder="Enter public GitHub Repository URL (e.g. https://github.com/fastapi/fastapi)..." value="https://github.com/jimmycodes/RepoMind">
+                <div class="input-wrapper search-bar-expand">
+                    <input type="text" id="repo-url-input" class="url-input" placeholder="Enter public GitHub Repository URL (e.g. https://github.com/fastapi/fastapi)..." value="https://github.com/Jyotiraditya21-bug/InSightForge">
                     <span class="focus-border"></span>
                 </div>
                 <button id="analyze-btn" class="btn">
@@ -49,12 +48,67 @@
                 </button>
             </div>
 
-            
             <div id="recent-group" class="demo-group" style="display:none;">
-                <span class="demo-label">🕰️ Recently Analyzed:</span>
+                <span class="demo-label">Recently Analyzed:</span>
                 <div id="recent-buttons-container" class="demo-group" style="display:inline-flex;">
                     <!-- Recent buttons will be dynamically injected here -->
                 </div>
+            </div>
+        </div>
+
+        <!-- Infinite Ticker Marquee -->
+        <div class="marquee-container fade-in">
+            <div class="marquee-content">
+                <span>Python AST Mapping</span><span>•</span>
+                <span>JavaScript Dependency Graphs</span><span>•</span>
+                <span>Local RAG AI Chat</span><span>•</span>
+                <span>TypeScript Import Trees</span><span>•</span>
+                <span>Visual Architecture Synthesis</span><span>•</span>
+                <span>Onboarding Checklists</span><span>•</span>
+                <span>Interactive Node Inspector</span><span>•</span>
+                <span>Rate Limited Cloud Analysis</span><span>•</span>
+                <!-- Loop duplicates -->
+                <span>Python AST Mapping</span><span>•</span>
+                <span>JavaScript Dependency Graphs</span><span>•</span>
+                <span>Local RAG AI Chat</span><span>•</span>
+                <span>TypeScript Import Trees</span><span>•</span>
+                <span>Visual Architecture Synthesis</span><span>•</span>
+                <span>Onboarding Checklists</span><span>•</span>
+                <span>Interactive Node Inspector</span><span>•</span>
+                <span>Rate Limited Cloud Analysis</span><span>•</span>
+            </div>
+        </div>
+
+        <!-- Features Showcase Section (3 Horizontal Borderless AI Agent Cards) -->
+        <div id="features-section" class="features-section fade-in">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg viewBox="0 0 24 24" width="22" height="22">
+                        <path fill="var(--secondary)" d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/>
+                    </svg>
+                </div>
+                <h4 class="feature-title">Summarizer Agent</h4>
+                <p class="feature-desc">Parses codebase AST trees and structure definitions. Compiles code documentation snapshots and traces internal file import maps.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg viewBox="0 0 24 24" width="22" height="22">
+                        <path fill="var(--secondary)" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                    </svg>
+                </div>
+                <h4 class="feature-title">Architect Agent</h4>
+                <p class="feature-desc">Orchestrates layout structures. Synthesizes high-level system dependency diagrams, maps file complexity, and designs onboarding guides.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg viewBox="0 0 24 24" width="22" height="22">
+                        <path fill="var(--secondary)" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                    </svg>
+                </div>
+                <h4 class="feature-title">Critic Agent</h4>
+                <p class="feature-desc">Operates in self-correcting loops. Audits generated designs and onboarding checklists against files, eliminating hallucinations.</p>
             </div>
         </div>
 
@@ -64,48 +118,79 @@
                 <div class="spinner"></div>
                 <div class="pulsing-glow"></div>
             </div>
-            <div id="loading-text" class="loading-text">Parsing repository structure...</div>
-            <div id="loading-subtext" class="loading-subtext">Compiling dependencies and building AST import maps locally. This takes up to 45 seconds for new repositories.</div>
+            <div id="loading-text" class="loading-text">Spawning Multi-Agent Graph...</div>
+            <div id="loading-subtext" class="loading-subtext">LangGraph orchestrator is running Summarizer, Architect, and Critic Agents to index the codebase and verify the graph.</div>
+            
+            <!-- Infinite Vertical Scrolling Logs -->
+            <div class="loading-logs-container">
+                <div class="loading-logs-content">
+                    <div class="loading-log-line">[SYS] Initializing LangGraph worker...</div>
+                    <div class="loading-log-line">[CLONE] Cloning repository references...</div>
+                    <div class="loading-log-line">[SUMMARIZER] Parsing AST nodes & imports...</div>
+                    <div class="loading-log-line">[SUMMARIZER] Compiling source documentation snapshots...</div>
+                    <div class="loading-log-line">[ARCHITECT] Synthesizing codebase design maps...</div>
+                    <div class="loading-log-line">[CRITIC] Reviewing design files for hallucinations...</div>
+                    <div class="loading-log-line">[RAG] Indexing local files into semantic vectors...</div>
+                    <div class="loading-log-line success">[DONE] Multi-Agent compilation completed successfully!</div>
+                    <!-- Duplicate loop entries for infinite scrolling -->
+                    <div class="loading-log-line">[SYS] Initializing LangGraph worker...</div>
+                    <div class="loading-log-line">[CLONE] Cloning repository references...</div>
+                    <div class="loading-log-line">[SUMMARIZER] Parsing AST nodes & imports...</div>
+                    <div class="loading-log-line">[SUMMARIZER] Compiling source documentation snapshots...</div>
+                    <div class="loading-log-line">[ARCHITECT] Synthesizing codebase design maps...</div>
+                    <div class="loading-log-line">[CRITIC] Reviewing design files for hallucinations...</div>
+                    <div class="loading-log-line">[RAG] Indexing local files into semantic vectors...</div>
+                    <div class="loading-log-line success">[DONE] Multi-Agent compilation completed successfully!</div>
+                </div>
+            </div>
         </div>
 
         <!-- Main Dashboard Grid -->
         <div id="dashboard-wrapper" class="dashboard-wrapper" style="display: none;">
             <!-- Premium Summary Card -->
             <div class="dashboard-summary-card scroll-reveal">
-                <div class="repo-meta-details">
-                    <div class="meta-main">
-                        <span class="repo-icon-octo">
-                            <svg class="animated-folder" viewBox="0 0 24 24" width="24" height="24" style="vertical-align: middle;">
-                                <path fill="#5F7257" d="M19.5 5.5h-7l-2-2h-6.5C3.12 3.5 2 4.62 2 6v12c0 1.38 1.12 2.5 2.5 2.5h15c1.38 0 2.5-1.12 2.5-2.5v-10c0-1.38-1.12-2.5-2.5-2.5zM4 5.5h3.62l2 2H19.5c.28 0 .5.22.5.5v2.5H4V5.5zm16 12.5c0 .28-.22.5-.5.5h-15c-.28 0-.5-.22-.5-.5v-6h16v6z"/>
-                            </svg>
-                        </span>
-                        <span class="repo-name-label" id="summary-repo-name">Repository: Loading...</span>
+                <!-- space-themed profile banner -->
+                <div class="profile-banner">
+                    <div class="profile-stars"></div>
+                    <div class="profile-glow"></div>
+                </div>
+                
+                <!-- avatar overlapping the banner and stats badges next to it -->
+                <div class="profile-header-area">
+                    <div class="profile-avatar">
+                        <svg class="animated-folder" viewBox="0 0 24 24" width="40" height="40">
+                            <path fill="currentColor" d="M19.5 5.5h-7l-2-2h-6.5C3.12 3.5 2 4.62 2 6v12c0 1.38 1.12 2.5 2.5 2.5h15c1.38 0 2.5-1.12 2.5-2.5v-10c0-1.38-1.12-2.5-2.5-2.5zM4 5.5h3.62l2 2H19.5c.28 0 .5.22.5.5v2.5H4V5.5zm16 12.5c0 .28-.22.5-.5.5h-15c-.28 0-.5-.22-.5-.5v-6h16v6z"/>
+                        </svg>
                     </div>
-                    <div class="repo-stats-row">
-                        <span class="repo-stat-item">
-                            <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" style="vertical-align: -2px; margin-right: 4px;">
-                                <path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
-                            </svg>
-                            <strong id="summary-total-files">0</strong> files
-                        </span>
-                        <span class="repo-stat-item">
-                            <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" style="vertical-align: -2px; margin-right: 4px;">
-                                <path fill="currentColor" d="M17 7h-4v2h4c1.65 0 3 1.35 3 3s-1.35 3-3 3h-4v2h4c2.76 0 5-2.24 5-5s-2.24-5-5-5zm-6 8H7c-1.65 0-3-1.35-3-3s1.35-3 3-3h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-2zm-3-4h8v2H8z"/>
-                            </svg>
-                            <strong id="summary-total-imports">0</strong> imports
-                        </span>
-                        <span class="repo-stat-item">
-                            <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" style="vertical-align: -2px; margin-right: 4px;">
-                                <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2h2v-1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
-                            </svg>
-                            <strong id="summary-density">0%</strong> density
-                        </span>
+                    
+                    <div class="profile-stats-row">
+                        <div class="profile-stat-badge">
+                            <span class="badge-label">Files</span>
+                            <span class="badge-value" id="summary-total-files">0</span>
+                        </div>
+                        <div class="profile-stat-badge">
+                            <span class="badge-label">Imports</span>
+                            <span class="badge-value" id="summary-total-imports">0</span>
+                        </div>
+                        <div class="profile-stat-badge">
+                            <span class="badge-label">Density</span>
+                            <span class="badge-value" id="summary-density">0%</span>
+                        </div>
                     </div>
                 </div>
-                <div class="language-distribution">
-                    <div class="lang-text-label">Language Breakdown</div>
-                    <div id="lang-bar-container" class="lang-bar-container"></div>
-                    <div id="lang-legend-container" class="lang-legend-container"></div>
+                
+                <!-- name and details below -->
+                <div class="profile-info-area">
+                    <div class="profile-info-left">
+                        <h2 id="summary-repo-name" class="profile-repo-name">Repository: Loading...</h2>
+                        <div class="profile-repo-tagline">AI-Synthesized Module Architecture & Imports Graph</div>
+                    </div>
+                    
+                    <div class="language-distribution">
+                        <div class="lang-text-label">Language Breakdown</div>
+                        <div id="lang-bar-container" class="lang-bar-container"></div>
+                        <div id="lang-legend-container" class="lang-legend-container"></div>
+                    </div>
                 </div>
             </div>
 
@@ -204,7 +289,7 @@
                     <div class="chat-container">
                         <div id="chat-messages-container" class="chat-messages">
                             <div class="chat-message assistant">
-                                Ask me anything about this repository! I retrieve relevant local modules and answer using the RAG model.
+                                Ask me anything about this repository! I retrieve relevant local modules and answer using the RAG Q&A Router Agent.
                             </div>
                         </div>
                         <div class="chat-input-area">

@@ -196,12 +196,12 @@ def analyze_repo(request: AnalyzeRequest, req: Request):
                 detail="You have reached your limit of 5 new repository analyses. Deploy your own backend to lift this limit!"
             )
 
-        # 5. Enforce Daily Limit (exemption for pre-baked demos)
-        if not check_daily_limit():
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Daily limit of 10 new repository analyses reached. Try a pre-baked demo repo!"
-            )
+        # 5. Enforce Daily Limit (exemption for pre-baked demos) - Bypassed to allow unlimited global runs with a 5-runs-per-user limit
+        # if not check_daily_limit():
+        #     raise HTTPException(
+        #         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        #         detail="Daily limit of 10 new repository analyses reached. Try a pre-baked demo repo!"
+        #     )
             
         # 6. Walk Files & Filter
         file_paths = walk_repo(temp_dir)
