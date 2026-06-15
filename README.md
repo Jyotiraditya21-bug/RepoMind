@@ -2,7 +2,7 @@
 
 RepoMind is an AI-powered codebase onboarding assistant that analyzes public GitHub repositories to generate interactive dependency graphs, architectural designs, and custom developer onboarding checklists.
 
-Live Project Link: https://jyotiraditya21-bug.github.io/RepoMind/
+Live Project Link: http://localhost:8080
 
 ## AI Multi-Agent Orchestration
 
