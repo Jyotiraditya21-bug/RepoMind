@@ -31,21 +31,10 @@ app.add_middleware(
 
 # Constants
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "cache")
-DEMO_CACHE_DIR = os.path.join(os.path.dirname(__file__), "demo_cache")
 COUNTER_FILE = os.path.join(CACHE_DIR, "daily_counter.json")
 USER_LIMITS_FILE = os.path.join(CACHE_DIR, "user_limits.json")
 DAILY_LIMIT = 10
 USER_SEARCH_LIMIT = 5
-
-# Pre-baked Demo Repos list
-DEMOS = [
-    {
-        "repo_id": "repomind_demo",
-        "name": "RepoMind Onboarding Assistant",
-        "url": "https://github.com/jimmycodes/RepoMind",
-        "description": "This application's own backend repository (3 modules, pure Python)."
-    }
-]
 
 # Request & Response schemas
 class AnalyzeRequest(BaseModel):
@@ -142,17 +131,8 @@ def increment_daily_counter(repo_url: str):
         except Exception as e:
             print(f"Error saving daily counter: {e}")
 
-# Helper to load analysis from either cache or demo cache
+# Helper to load analysis from cache
 def load_analysis_payload(repo_id: str) -> dict | None:
-    # Check demo cache first
-    demo_file = os.path.join(DEMO_CACHE_DIR, f"{repo_id}.json")
-    if os.path.exists(demo_file):
-        try:
-            with open(demo_file, "r") as f:
-                return json.load(f)
-        except Exception:
-            pass
-            
     # Check standard cache
     cache_file = os.path.join(CACHE_DIR, f"{repo_id}.json")
     if os.path.exists(cache_file):
@@ -174,8 +154,8 @@ def read_root():
 
 @app.get("/demos")
 def get_demos():
-    """Returns the list of pre-baked demo repositories."""
-    return DEMOS
+    """Returns the list of pre-baked demo repositories (now empty)."""
+    return []
 
 @app.post("/analyze")
 def analyze_repo(request: AnalyzeRequest, req: Request):
@@ -187,13 +167,7 @@ def analyze_repo(request: AnalyzeRequest, req: Request):
             detail="Invalid repository URL. Please provide a valid GitHub repository URL."
         )
 
-    # 1. Check if the repo is one of the pre-baked demos
-    for demo in DEMOS:
-        if demo["url"].lower() == repo_url.lower():
-            payload = load_analysis_payload(demo["repo_id"])
-            if payload:
-                payload["repo_id"] = demo["repo_id"]
-                return payload
+    # Pre-baked demos check removed
 
     # 2. Setup local cloning
     with tempfile.TemporaryDirectory() as temp_dir:
