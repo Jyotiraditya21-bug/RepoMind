@@ -337,6 +337,12 @@ async function analyzeRepository(url) {
         // 1. Render Architecture tab
         archOverviewText.innerHTML = parseMarkdown(data.architecture_overview);
         
+        // Reset checklist progress bar
+        const progressPercent = document.getElementById('progress-percent');
+        const progressFill = document.getElementById('progress-fill');
+        if (progressPercent) progressPercent.innerText = "0% Completed";
+        if (progressFill) progressFill.style.width = "0%";
+
         // 2. Render Start Here lists
         startHereContainer.innerHTML = '';
         if (data.start_here && data.start_here.length > 0) {
@@ -345,16 +351,20 @@ async function analyzeRepository(url) {
                 element.className = 'start-here-item scroll-reveal';
                 element.style.animationDelay = `${index * 0.1}s`;
                 element.innerHTML = `
-                    <div class="file-path">${item.file}</div>
-                    <div class="file-reason">${item.reason}</div>
+                    <div>
+                        <div class="file-path">${item.file}</div>
+                        <div class="file-reason">${item.reason}</div>
+                    </div>
                 `;
                 element.addEventListener('click', () => {
                     focusAndInspectNode(item.file);
+                    element.classList.toggle('checked');
+                    updateChecklistProgress();
                 });
                 startHereContainer.appendChild(element);
             });
         } else {
-            startHereContainer.innerHTML = '<div style="color:var(--text-muted);">No start-here files recommended.</div>';
+            startHereContainer.innerHTML = '<div style="color:var(--text-muted); padding:1rem 0;">No start-here files recommended.</div>';
         }
         
         // Setup scroll-reveal observers
@@ -876,4 +886,18 @@ function appendMessage(text, senderClass) {
     chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
     
     return messageId;
+}
+
+// Calculate checklist progress percentages and update indicators
+function updateChecklistProgress() {
+    const items = document.querySelectorAll('.start-here-item');
+    if (items.length === 0) return;
+    const checked = document.querySelectorAll('.start-here-item.checked');
+    const percent = Math.round((checked.length / items.length) * 100);
+    
+    const percentEl = document.getElementById('progress-percent');
+    const fillEl = document.getElementById('progress-fill');
+    
+    if (percentEl) percentEl.innerText = `${percent}% Completed`;
+    if (fillEl) fillEl.style.width = `${percent}%`;
 }
