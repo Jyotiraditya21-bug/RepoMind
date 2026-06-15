@@ -52,13 +52,11 @@ let currentRepoId = null;
 let networkInstance = null;
 let cachedFileSummaries = {};
 let cachedGraphData = null;
-let demoUrls = [];
 let physicsEnabled = true;
 
 // DOM Elements
 const repoUrlInput = document.getElementById('repo-url-input');
 const analyzeBtn = document.getElementById('analyze-btn');
-const demoButtonsContainer = document.getElementById('demo-buttons-container');
 const recentGroup = document.getElementById('recent-group');
 const recentButtonsContainer = document.getElementById('recent-buttons-container');
 const errorBanner = document.getElementById('error-banner');
@@ -110,7 +108,6 @@ const chatSendBtn = document.getElementById('chat-send-btn');
 window.addEventListener('DOMContentLoaded', () => {
     updateUsageCounter();
     renderRecentReposList();
-    fetchDemos();
     setupEventListeners();
 });
 
@@ -190,32 +187,7 @@ function updateUsageCounter() {
     }
 }
 
-// Fetch Pre-baked Demos from backend
-async function fetchDemos() {
-    try {
-        const response = await fetch(`${BACKEND_URL}/demos`);
-        if (!response.ok) throw new Error('Failed to fetch demo list');
-        const demos = await response.json();
-        
-        demoUrls = demos.map(d => d.url.toLowerCase());
-        
-        demoButtonsContainer.innerHTML = '';
-        demos.forEach(demo => {
-            const btn = document.createElement('button');
-            btn.className = 'demo-btn';
-            btn.innerText = demo.name;
-            btn.title = demo.description;
-            btn.addEventListener('click', () => {
-                repoUrlInput.value = demo.url;
-                analyzeRepository(demo.url);
-            });
-            demoButtonsContainer.appendChild(btn);
-        });
-    } catch (err) {
-        console.error('Error fetching demos:', err);
-        demoButtonsContainer.innerHTML = '<span style="font-size:0.8rem; color:var(--text-muted);">Launch backend to load demos</span>';
-    }
-}
+
 
 // History Manager: Save repo to localStorage
 function saveRepoToHistory(name, url) {
@@ -300,12 +272,11 @@ async function analyzeRepository(url) {
     clearError();
     inspectorPanel.classList.remove('active');
     
-    const isDemo = demoUrls.includes(url.toLowerCase());
     let searchCount = parseInt(localStorage.getItem('repomind_search_count') || '0', 10);
     let analyzedRepos = JSON.parse(localStorage.getItem('repomind_analyzed_repos') || '[]');
     const isAlreadyAnalyzed = analyzedRepos.includes(url.toLowerCase());
     
-    if (!isDemo && !isAlreadyAnalyzed && searchCount >= 5) {
+    if (!isAlreadyAnalyzed && searchCount >= 5) {
         showError("You have reached your limit of 5 new repository analyses. Deploy your own backend to lift this limit!");
         return;
     }
@@ -335,7 +306,7 @@ async function analyzeRepository(url) {
         cachedFileSummaries = data.file_summaries || {};
         cachedGraphData = data.graph_data;
         
-        if (!isDemo && !isAlreadyAnalyzed) {
+        if (!isAlreadyAnalyzed) {
             searchCount += 1;
             localStorage.setItem('repomind_search_count', searchCount.toString());
             updateUsageCounter();
