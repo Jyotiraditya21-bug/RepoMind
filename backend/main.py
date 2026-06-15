@@ -188,13 +188,13 @@ def analyze_repo(request: AnalyzeRequest, req: Request):
             cached_payload["repo_id"] = repo_id
             return cached_payload
             
-        # 4. Enforce Per-User Search Limit (5 per user/IP/Device)
-        client_ip = get_client_ip(req)
-        if not check_user_limit(client_ip, request.device_id):
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="You have reached your limit of 5 new repository analyses. Deploy your own backend to lift this limit!"
-            )
+        # 4. Enforce Per-User Search Limit (5 per user/IP/Device) - Bypassed/Disabled as requested
+        # client_ip = get_client_ip(req)
+        # if not check_user_limit(client_ip, request.device_id):
+        #     raise HTTPException(
+        #         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        #         detail="You have reached your limit of 5 new repository analyses. Deploy your own backend to lift this limit!"
+        #     )
 
         # 5. Enforce Daily Limit (exemption for pre-baked demos) - Bypassed to allow unlimited global runs with a 5-runs-per-user limit
         # if not check_daily_limit():
