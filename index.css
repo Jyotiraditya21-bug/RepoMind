@@ -2,29 +2,29 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 
 :root {
-    --bg-main: #F5F2EB;              /* Rich Warm Khadi Cream */
-    --bg-card: #FAF9F6;              /* Linen White */
-    --border-color: rgba(95, 114, 87, 0.12); /* Delicate Muted Sage Border */
-    --border-glow: rgba(224, 122, 95, 0.28);  /* Soft Terracotta Glow */
+    --bg-main: #0d1117;              /* GitHub Dark canvas background */
+    --bg-card: #161b22;              /* GitHub Dark box background */
+    --border-color: #30363d;          /* GitHub Dark border color */
+    --border-glow: rgba(56, 139, 253, 0.35); /* Subtle GitHub Blue glow */
     
-    --primary: #4A5B43;              /* Rich Forest-Sage Olive */
-    --primary-glow: rgba(74, 91, 67, 0.08);
-    --primary-hover: #3E4D38;
+    --primary: #58a6ff;              /* GitHub Link Blue */
+    --primary-glow: rgba(56, 139, 253, 0.1);
+    --primary-hover: #1f6feb;        /* GitHub Primary Blue */
     
-    --secondary: #DC7659;            /* Smooth Rose Terracotta */
-    --accent: #DC7659;
-    --accent-error: #B73E21;         /* Deep Burnt Orange Error */
+    --secondary: #238636;            /* GitHub green button (success green) */
+    --accent: #58a6ff;               /* Primary Blue */
+    --accent-error: #f85149;         /* GitHub Dark red error */
     
-    --text-primary: #252A27;          /* High Contrast Charcoal-Green */
-    --text-secondary: #5F6C65;        /* Medium Sage Gray */
-    --text-muted: #8E9B94;            /* Soft Light Olive Gray */
+    --text-primary: #c9d1d9;          /* GitHub Light grey primary text */
+    --text-secondary: #8b949e;        /* GitHub Muted grey text */
+    --text-muted: #484f58;            /* GitHub Darker muted grey */
     
-    --font-heading: 'Outfit', sans-serif;
-    --font-body: 'Plus Jakarta Sans', sans-serif;
+    --font-heading: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
     
-    --transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-    --shadow-soft: 0 4px 24px rgba(74, 91, 67, 0.03), 0 1px 2px rgba(0,0,0,0.01);
-    --shadow-hover: 0 16px 48px rgba(74, 91, 67, 0.08), 0 2px 8px rgba(0,0,0,0.02);
+    --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    --shadow-soft: 0 8px 24px rgba(0,0,0,0.4);
+    --shadow-hover: 0 16px 48px rgba(0,0,0,0.6);
 }
 
 * {
@@ -35,8 +35,8 @@
 
 body {
     background-color: var(--bg-main);
-    background-image: radial-gradient(rgba(95, 114, 87, 0.07) 1.5px, transparent 1.5px);
-    background-size: 24px 24px;
+    background-image: radial-gradient(rgba(240, 246, 252, 0.05) 1.2px, transparent 1.2px);
+    background-size: 20px 20px;
     color: var(--text-primary);
     font-family: var(--font-body);
     min-height: 100vh;
@@ -75,7 +75,7 @@ body::after {
 
 /* Premium Header with Pulsing status indicators */
 header {
-    background: rgba(244, 241, 234, 0.85);
+    background: rgba(22, 27, 34, 0.85);
     backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--border-color);
     padding: 1rem 2rem;
@@ -85,7 +85,7 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0 2px 15px rgba(95, 114, 87, 0.02);
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
 }
 
 .logo-container {
@@ -200,7 +200,7 @@ header {
 
 .url-input {
     flex-grow: 1;
-    background: #FFFFFF;
+    background: #0d1117;
     border: 1px solid var(--border-color);
     border-radius: 0.65rem;
     color: var(--text-primary);
@@ -208,27 +208,27 @@ header {
     font-family: var(--font-body);
     font-size: 0.95rem;
     transition: var(--transition);
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.01);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .url-input:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(95, 114, 87, 0.12);
+    box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.18);
 }
 
 .btn {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-    border: none;
+    background: var(--secondary);
+    border: 1px solid rgba(240, 246, 252, 0.1);
     border-radius: 0.65rem;
-    color: #FAF9F6;
+    color: #ffffff;
     font-family: var(--font-heading);
     font-weight: 600;
     font-size: 0.95rem;
     padding: 0.85rem 1.75rem;
     cursor: pointer;
     transition: var(--transition);
-    box-shadow: 0 4px 12px rgba(224, 122, 95, 0.15);
+    box-shadow: 0 2px 8px rgba(35, 134, 54, 0.2);
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -236,7 +236,8 @@ header {
 
 .btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(224, 122, 95, 0.3);
+    background: #2ea44f;
+    box-shadow: 0 4px 12px rgba(46, 164, 79, 0.4);
 }
 
 .btn:active {
@@ -264,10 +265,10 @@ header {
 }
 
 .demo-btn {
-    background: rgba(95, 114, 87, 0.05);
+    background: #21262d;
     border: 1px solid var(--border-color);
     border-radius: 2rem;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     padding: 0.4rem 1.15rem;
     font-size: 0.8rem;
     font-weight: 500;
@@ -276,8 +277,8 @@ header {
 }
 
 .demo-btn:hover {
-    background: var(--primary-glow);
-    border-color: var(--primary);
+    background: #30363d;
+    border-color: #8b949e;
     color: var(--text-primary);
     transform: scale(1.03);
 }
@@ -513,12 +514,12 @@ header {
     font-size: 0.85rem;
     line-height: 1.55;
     color: var(--text-primary);
-    background: #FFFFFF;
+    background: #0d1117;
     border: 1px solid var(--border-color);
     border-radius: 0.5rem;
     padding: 0.85rem;
     border-left: 3px solid var(--primary);
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.01);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .inspector-subtitle {
@@ -649,7 +650,7 @@ header {
 }
 
 .start-here-item {
-    background: #FFFFFF;
+    background: #21262d;
     border: 1px solid var(--border-color);
     border-radius: 0.65rem;
     padding: 1.15rem;
@@ -712,12 +713,12 @@ header {
 }
 
 .chat-message.assistant {
-    background: #FFFFFF;
+    background: #21262d;
     color: var(--text-primary);
     align-self: flex-start;
     border-bottom-left-radius: 0.25rem;
     border: 1px solid var(--border-color);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 /* typing loader indicator bubble */
@@ -747,7 +748,7 @@ header {
 
 .chat-input {
     flex-grow: 1;
-    background: #FFFFFF;
+    background: #0d1117;
     border: 1px solid var(--border-color);
     border-radius: 0.65rem;
     color: var(--text-primary);
@@ -978,7 +979,7 @@ header {
 
 .graph-search-input {
     width: 100%;
-    background: #FFFFFF;
+    background: #0d1117;
     border: 1px solid var(--border-color);
     border-radius: 2rem;
     padding: 0.4rem 1rem;
@@ -991,7 +992,7 @@ header {
 .graph-search-input:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(95, 114, 87, 0.1);
+    box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.18);
 }
 
 .graph-search-results {
@@ -1320,7 +1321,7 @@ header {
 
 /* Checklist Progression Bar */
 .checklist-progress-wrapper {
-    background: #FFFFFF;
+    background: #21262d;
     border: 1px solid var(--border-color);
     border-radius: 0.65rem;
     padding: 0.85rem 1.15rem;
@@ -1328,7 +1329,7 @@ header {
     display: flex;
     flex-direction: column;
     gap: 0.45rem;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.01);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .checklist-progress-info {
