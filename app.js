@@ -276,10 +276,11 @@ async function analyzeRepository(url) {
     let analyzedRepos = JSON.parse(localStorage.getItem('repomind_analyzed_repos') || '[]');
     const isAlreadyAnalyzed = analyzedRepos.includes(url.toLowerCase());
     
-    if (!isAlreadyAnalyzed && searchCount >= 5) {
-        showError("You have reached your limit of 5 new repository analyses. Deploy your own backend to lift this limit!");
-        return;
-    }
+    // client-side search limit check bypassed/disabled as requested
+    // if (!isAlreadyAnalyzed && searchCount >= 5) {
+    //     showError("You have reached your limit of 5 new repository analyses. Deploy your own backend to lift this limit!");
+    //     return;
+    // }
     
     // Reset animation classes
     dashboardWrapper.classList.remove('slide-out-up');
