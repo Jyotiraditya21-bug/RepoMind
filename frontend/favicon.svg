@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect width="32" height="32" rx="7" ry="7" fill="url(#g)"/>
+  <!-- RM monogram, white, bold -->
+  <text x="4" y="23" font-family="Arial Black, sans-serif" font-size="14" font-weight="900" fill="white" letter-spacing="-0.5">RM</text>
+</svg>
