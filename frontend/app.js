@@ -1,5 +1,7 @@
 // Auto-detect API host (local vs deployed)
-const BACKEND_URL = 'http://localhost:8000';
+const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:8000'
+    : 'https://jimmy2110-repomind-backend.hf.space';
 
 // Device fingerprinting to strictly prevent API key exhaustion (bypassing incognito/cleared cookies)
 function getCanvasFingerprint() {
