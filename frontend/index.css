@@ -1927,3 +1927,82 @@ header {
     }
 }
 
+/* ============================================
+   STAR FOOTER
+   ============================================ */
+.star-footer {
+    width: 100%;
+    padding: 0.75rem 1.5rem;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.02);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    margin-top: 2rem;
+}
+
+.star-footer-text {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    letter-spacing: 0.01em;
+}
+
+.star-link {
+    color: #f0c050;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+.star-link:hover {
+    color: #ffd966;
+    text-shadow: 0 0 8px rgba(240, 192, 80, 0.5);
+}
+
+.star-steps {
+    display: inline-block;
+    margin-top: 0.45rem;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-align: left;
+}
+
+.star-steps summary {
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 0.7rem;
+    text-align: center;
+    user-select: none;
+    transition: color 0.2s ease;
+    list-style: none;
+}
+
+.star-steps summary::-webkit-details-marker { display: none; }
+
+.star-steps summary::before {
+    content: "▸ ";
+    font-size: 0.65rem;
+}
+
+.star-steps[open] summary::before {
+    content: "▾ ";
+}
+
+.star-steps summary:hover {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.star-steps ol {
+    margin: 0.5rem 0 0 0;
+    padding-left: 1.3rem;
+    line-height: 1.8;
+}
+
+.star-steps ol a {
+    color: #f0c050;
+    text-decoration: none;
+}
+
+.star-steps ol a:hover {
+    text-decoration: underline;
+}
+
+
