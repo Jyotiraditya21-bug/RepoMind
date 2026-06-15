@@ -412,16 +412,16 @@ function getLanguageFromPath(path) {
 // Earth-tone coloring system for language categories
 function getLanguageColor(lang) {
     const colors = {
-        'Python': '#5F7257',                // Sage Green
-        'JavaScript/TypeScript': '#E07A5F', // Terracotta Peach
-        'Rust': '#D4A373',                  // Warm Sand Ochre
-        'Go': '#6096BA',                    // Muted Soft Blue
-        'Java': '#9E768F',                  // Lavender Sage
-        'C#': '#A78A7F',                    // Soft Clay
-        'C/C++': '#E9D8A6',                 // Warm Cream Yellow
-        'HTML/CSS': '#7798AB',              // Slate Gray Blue
-        'Config/Docs': '#C4A484',           // Light Oak
-        'Other': '#9AA59F'                  // Olive Gray
+        'Python': '#3572A5',                // GitHub Python Blue
+        'JavaScript/TypeScript': '#f1e05a', // GitHub JS Yellow
+        'Rust': '#dee5e5',                  // GitHub Rust Grey
+        'Go': '#00ADD8',                    // GitHub Go Cyan
+        'Java': '#b07219',                  // GitHub Java Orange-Brown
+        'C#': '#178600',                    // GitHub C# Green
+        'C/C++': '#f34b7d',                 // GitHub C++ Pink
+        'HTML/CSS': '#563d7c',              // GitHub CSS Purple
+        'Config/Docs': '#8b949e',           // Muted Grey
+        'Other': '#8b949e'                  // Muted Grey
     };
     return colors[lang] || colors['Other'];
 }
@@ -470,23 +470,23 @@ function getNodeDirectoryColors(nodeId) {
     const parts = nodeId.split('/');
     const dir = parts.length > 1 ? parts[0] : 'root';
     
-    // Predetermined premium palettes
+    // Predetermined GitHub Dark palettes
     const palettes = {
-        'backend': { bg: '#E3EAE0', border: '#5F7257' },
-        'frontend': { bg: '#F9E5DE', border: '#E07A5F' },
-        'root': { bg: '#FAECD8', border: '#E3A03B' }
+        'backend': { bg: '#162a1c', border: '#266935' }, // Dark green
+        'frontend': { bg: '#142337', border: '#1a5ab0' }, // Dark blue
+        'root': { bg: '#251c14', border: '#a66827' }      // Dark orange
     };
     
     if (palettes[dir]) {
         return palettes[dir];
     }
     
-    // Hash directory name to assign a stable organic tone
+    // Hash directory name to assign a stable GitHub Dark fallback tone
     const fallbackTones = [
-        { bg: '#E7E6E1', border: '#8A8A83' }, // Stone Grey
-        { bg: '#ECE5C8', border: '#9E946C' }, // Dry Grass
-        { bg: '#DFEAEB', border: '#789599' }, // Light Sage-Slate
-        { bg: '#E4DFEB', border: '#9A8CB2' }  // Pale Lilac Sage
+        { bg: '#21262d', border: '#30363d' }, // Dark Grey
+        { bg: '#1c222b', border: '#2f3b4c' }, // Slate Blue-Grey
+        { bg: '#2b2121', border: '#4f3030' }, // Reddish-Grey
+        { bg: '#25212c', border: '#463065' }  // Purplish-Grey
     ];
     
     let hash = 0;
@@ -525,13 +525,13 @@ function renderDependencyGraph(graphData) {
                 background: palette.bg,
                 border: palette.border,
                 highlight: {
-                    background: '#FAF9F6',
-                    border: '#E07A5F'
+                    background: '#1f6feb',
+                    border: '#58a6ff'
                 }
             },
             font: {
-                color: '#2D332F',
-                face: 'Plus Jakarta Sans',
+                color: '#c9d1d9',
+                face: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif',
                 size: 11,
                 weight: '500'
             }
@@ -557,8 +557,8 @@ function renderDependencyGraph(graphData) {
             to: edge.to,
             arrows: 'to',
             color: {
-                color: 'rgba(95, 114, 87, 0.25)',
-                highlight: '#E07A5F'
+                color: 'rgba(139, 148, 158, 0.15)',
+                highlight: '#58a6ff'
             },
             width: 1.25,
             smooth: {
