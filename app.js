@@ -16,7 +16,7 @@ function getCanvasFingerprint() {
         ctx.fillRect(125, 1, 62, 20);
         ctx.fillStyle = "#069";
         ctx.fillText("RepoMind,fp.1", 2, 2);
-        ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+        ctx.fillStyle = "rgba(168, 85, 247, 0.7)";
         ctx.fillText("RepoMind,fp.1", 4, 15);
         return canvas.toDataURL();
     } catch(e) {
@@ -217,7 +217,7 @@ function renderRecentReposList() {
     recentRepos.forEach(repo => {
         const btn = document.createElement('button');
         btn.className = 'demo-btn';
-        btn.style.borderColor = 'rgba(224, 122, 95, 0.25)';
+        btn.style.borderColor = 'var(--border-color)';
         btn.innerHTML = `<span>${repo.name}</span>`;
         btn.title = repo.url;
         btn.addEventListener('click', () => {
@@ -281,8 +281,23 @@ async function analyzeRepository(url) {
         return;
     }
     
-    loadingPanel.style.display = 'flex';
+    // Reset animation classes
+    dashboardWrapper.classList.remove('slide-out-up');
+    loadingPanel.classList.remove('slide-in-up');
+    
+    // If dashboard is currently visible, slide it out smoothly before showing loader
+    const isDashboardVisible = dashboardWrapper.style.display === 'flex';
+    
+    if (isDashboardVisible) {
+        dashboardWrapper.classList.add('slide-out-up');
+        // Wait for slide-out animation to complete (450ms)
+        await new Promise(resolve => setTimeout(resolve, 450));
+    }
+    
     dashboardWrapper.style.display = 'none';
+    
+    loadingPanel.style.display = 'flex';
+    loadingPanel.classList.add('slide-in-up');
     loadingText.innerText = "Analyzing Repository...";
     
     try {
@@ -383,12 +398,42 @@ async function analyzeRepository(url) {
         
         // Show dashboard
         loadingPanel.style.display = 'none';
+        loadingPanel.classList.remove('slide-in-up');
+        
+        dashboardWrapper.classList.remove('slide-out-up');
         dashboardWrapper.style.display = 'flex';
+        
+        // Orchestrate the premium scrolling and focusing flow
+        setTimeout(() => {
+            // Smoothly scroll down to the dashboard
+            dashboardWrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            // After scroll animation completes, switch to Chat tab and focus input
+            setTimeout(() => {
+                switchTab('chat');
+                
+                // Focus input field
+                if (chatInputField) {
+                    chatInputField.focus();
+                    
+                    // Pulse highlight the input wrapper border
+                    const inputWrapper = chatInputField.closest('.input-wrapper');
+                    if (inputWrapper) {
+                        inputWrapper.classList.add('chat-pulse-highlight');
+                        setTimeout(() => {
+                            inputWrapper.classList.remove('chat-pulse-highlight');
+                        }, 3000);
+                    }
+                }
+            }, 1000);
+        }, 100);
         
     } catch (err) {
         console.error('Analysis error:', err);
         showError(err.message);
         loadingPanel.style.display = 'none';
+        loadingPanel.classList.remove('slide-in-up');
+        dashboardWrapper.classList.remove('slide-out-up');
     }
 }
 
@@ -417,7 +462,7 @@ function getLanguageColor(lang) {
         'Rust': '#dee5e5',                  // GitHub Rust Grey
         'Go': '#00ADD8',                    // GitHub Go Cyan
         'Java': '#b07219',                  // GitHub Java Orange-Brown
-        'C#': '#178600',                    // GitHub C# Green
+        'C#': '#a855f7',                    // GitHub C# Purple
         'C/C++': '#f34b7d',                 // GitHub C++ Pink
         'HTML/CSS': '#563d7c',              // GitHub CSS Purple
         'Config/Docs': '#8b949e',           // Muted Grey
@@ -470,23 +515,23 @@ function getNodeDirectoryColors(nodeId) {
     const parts = nodeId.split('/');
     const dir = parts.length > 1 ? parts[0] : 'root';
     
-    // Predetermined GitHub Dark palettes
+    // Predetermined GitHub Dark translucent palettes (Purple/Indigo theme)
     const palettes = {
-        'backend': { bg: '#162a1c', border: '#266935' }, // Dark green
-        'frontend': { bg: '#142337', border: '#1a5ab0' }, // Dark blue
-        'root': { bg: '#251c14', border: '#a66827' }      // Dark orange
+        'backend': { bg: 'rgba(99, 102, 241, 0.25)', border: '#6366f1' }, // Translucent Indigo
+        'frontend': { bg: 'rgba(168, 85, 247, 0.25)', border: '#a855f7' }, // Translucent Purple
+        'root': { bg: 'rgba(217, 70, 239, 0.25)', border: '#d946ef' }      // Translucent Fuchsia
     };
     
     if (palettes[dir]) {
         return palettes[dir];
     }
     
-    // Hash directory name to assign a stable GitHub Dark fallback tone
+    // Hash directory name to assign a stable GitHub Dark translucent fallback tone
     const fallbackTones = [
-        { bg: '#21262d', border: '#30363d' }, // Dark Grey
-        { bg: '#1c222b', border: '#2f3b4c' }, // Slate Blue-Grey
-        { bg: '#2b2121', border: '#4f3030' }, // Reddish-Grey
-        { bg: '#25212c', border: '#463065' }  // Purplish-Grey
+        { bg: 'rgba(139, 148, 158, 0.25)', border: '#8b949e' }, // Translucent Grey
+        { bg: 'rgba(168, 85, 247, 0.25)', border: '#a855f7' },  // Translucent Purple
+        { bg: 'rgba(99, 102, 241, 0.25)', border: '#6366f1' },   // Translucent Indigo
+        { bg: 'rgba(217, 70, 239, 0.25)', border: '#d946ef' }   // Translucent Fuchsia
     ];
     
     let hash = 0;
@@ -534,6 +579,13 @@ function renderDependencyGraph(graphData) {
                 face: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif',
                 size: 11,
                 weight: '500'
+            },
+            shadow: {
+                enabled: true,
+                color: 'rgba(0, 0, 0, 0.5)',
+                size: 6,
+                x: 0,
+                y: 3
             }
         };
     });
@@ -604,6 +656,66 @@ function renderDependencyGraph(graphData) {
     }
     
     networkInstance = new vis.Network(container, data, options);
+    
+    // Hover Node - Scale up and glow bubble
+    networkInstance.on("hoverNode", (params) => {
+        container.style.cursor = 'pointer';
+        const nodeId = params.node;
+        const node = data.nodes.get(nodeId);
+        if (node) {
+            if (!node.originalSize) {
+                node.originalSize = node.size;
+            }
+            data.nodes.update({
+                id: nodeId,
+                size: node.originalSize * 1.35,
+                color: {
+                    background: 'rgba(56, 189, 248, 0.45)', // Sky blue highlight glow background
+                    border: '#c084fc',                       // Lavender/Purple border
+                    highlight: {
+                        background: 'rgba(56, 189, 248, 0.45)',
+                        border: '#c084fc'
+                    }
+                },
+                shadow: {
+                    enabled: true,
+                    color: 'rgba(56, 189, 248, 0.8)',      // Bright cyan glow
+                    size: 15,
+                    x: 0,
+                    y: 0
+                }
+            });
+        }
+    });
+    
+    // Blur Node - Restore bubble size and color
+    networkInstance.on("blurNode", (params) => {
+        container.style.cursor = 'default';
+        const nodeId = params.node;
+        const node = data.nodes.get(nodeId);
+        if (node) {
+            const palette = getNodeDirectoryColors(nodeId);
+            data.nodes.update({
+                id: nodeId,
+                size: node.originalSize || node.size,
+                color: {
+                    background: palette.bg,
+                    border: palette.border,
+                    highlight: {
+                        background: '#1f6feb',
+                        border: '#58a6ff'
+                    }
+                },
+                shadow: {
+                    enabled: true,
+                    color: 'rgba(0, 0, 0, 0.5)',
+                    size: 6,
+                    x: 0,
+                    y: 3
+                }
+            });
+        }
+    });
     
     // Double click to reset focus
     networkInstance.on("doubleClick", () => {
