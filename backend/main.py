@@ -1,224 +1,230 @@
 import os
-import json
+import sys
 import datetime
 import tempfile
-import shutil
-from typing import List, Dict, Any
-from pydantic import BaseModel
-from fastapi import FastAPI, HTTPException, status, Request
+import logging
+from typing import Optional
+from pydantic import BaseModel, Field
+from fastapi import FastAPI, HTTPException, status, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from analyzer import clone_repo, walk_repo, build_dependency_graph
+# Configure structured logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] [%(name)s] %(message)s"
+)
+logger = logging.getLogger("repomind.api")
+
+# Ensure local backend modules can be imported reliably
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+
+from analyzer import (
+    validate_github_url,
+    clone_repo,
+    walk_repo,
+    build_dependency_graph
+)
 from agent import (
-    create_agent_workflow, 
-    get_cached_analysis, 
-    save_analysis_to_cache, 
+    create_agent_workflow,
+    get_runtime_mode,
     answer_codebase_question,
     get_repo_cache_key
 )
+from store import create_store
 
-app = FastAPI(title="AI Codebase Onboarding Assistant API")
+VERSION = "1.1.0"
+CACHE_DIR = os.path.join(os.path.dirname(__file__), "cache")
+store = create_store(CACHE_DIR)
 
-# Configure CORS
-# Allow requests from GitHub Pages and local development
+DAILY_LIMIT = int(os.environ.get("DAILY_ANALYSIS_LIMIT", "20"))
+USER_SEARCH_LIMIT = int(os.environ.get("USER_ANALYSIS_LIMIT", "10"))
+
+app = FastAPI(
+    title="RepoMind API",
+    description="Multi-Agent & Heuristic Codebase Onboarding Assistant",
+    version=VERSION
+)
+
+# CORS Configuration
+DEFAULT_ORIGINS = [
+    "https://jyotiraditya21-bug.github.io",
+    "https://jyotiraditya.is-a.dev",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1:5500",
+]
+extra_origins = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+allowed_origins = list(set(DEFAULT_ORIGINS + extra_origins))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Using * for HF Spaces compatibility with static frontends
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
-# Constants
-CACHE_DIR = os.path.join(os.path.dirname(__file__), "cache")
-COUNTER_FILE = os.path.join(CACHE_DIR, "daily_counter.json")
-USER_LIMITS_FILE = os.path.join(CACHE_DIR, "user_limits.json")
-DAILY_LIMIT = 10
-USER_SEARCH_LIMIT = 5
 
 # Request & Response schemas
 class AnalyzeRequest(BaseModel):
-    repo_url: str
-    device_id: str | None = None
+    repo_url: str = Field(..., description="Canonical HTTPS URL of a public GitHub repository")
+    device_id: Optional[str] = Field(None, description="Optional anonymous device fingerprint")
 
 class ChatRequest(BaseModel):
-    repo_id: str
-    question: str
+    repo_id: str = Field(..., description="Unique analysis cache identifier")
+    question: str = Field(..., min_length=2, max_length=500, description="Question about codebase")
 
-# Helper functions for rate limiting
+
 def get_client_ip(request: Request) -> str:
-    """Helper to retrieve client IP, checking behind reverse proxies first."""
+    """Helper to retrieve client IP from trusted reverse proxy headers or direct client host."""
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
         return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "unknown_ip"
 
-def check_user_limit(client_ip: str, device_id: str | None = None) -> bool:
-    """Returns True if neither the client IP nor the device ID has exceeded the 5-search limit."""
-    if not os.path.exists(USER_LIMITS_FILE):
-        return True
-    try:
-        with open(USER_LIMITS_FILE, "r") as f:
-            limits = json.load(f)
-            
-        # Check IP limit
-        if limits.get(client_ip, 0) >= USER_SEARCH_LIMIT:
-            return False
-            
-        # Check device ID limit
-        if device_id and limits.get(device_id, 0) >= USER_SEARCH_LIMIT:
-            return False
-            
-        return True
-    except Exception as e:
-        print(f"Error checking user limit: {e}")
-        return True
-
-def increment_user_counter(client_ip: str, device_id: str | None = None):
-    """Increments the search counter for the client IP and device ID."""
-    os.makedirs(CACHE_DIR, exist_ok=True)
-    limits = {}
-    if os.path.exists(USER_LIMITS_FILE):
-        try:
-            with open(USER_LIMITS_FILE, "r") as f:
-                limits = json.load(f)
-        except Exception:
-            pass
-            
-    limits[client_ip] = limits.get(client_ip, 0) + 1
-    if device_id:
-        limits[device_id] = limits.get(device_id, 0) + 1
-        
-    try:
-        with open(USER_LIMITS_FILE, "w") as f:
-            json.dump(limits, f)
-    except Exception as e:
-        print(f"Error saving user limits: {e}")
-
-def check_daily_limit() -> bool:
-    """Returns True if the limit of new analyses for the day has NOT been reached."""
-    today = datetime.date.today().isoformat()
-    if not os.path.exists(COUNTER_FILE):
-        return True
-    try:
-        with open(COUNTER_FILE, "r") as f:
-            counter = json.load(f)
-        day_entry = counter.get(today, {"count": 0, "repos": []})
-        return day_entry["count"] < DAILY_LIMIT
-    except Exception as e:
-        print(f"Error checking daily limit: {e}")
-        return True
-
-def increment_daily_counter(repo_url: str):
-    """Increments the daily analysis counter for non-cached repos."""
-    today = datetime.date.today().isoformat()
-    os.makedirs(CACHE_DIR, exist_ok=True)
-    counter = {}
-    if os.path.exists(COUNTER_FILE):
-        try:
-            with open(COUNTER_FILE, "r") as f:
-                counter = json.load(f)
-        except Exception:
-            pass
-            
-    day_entry = counter.setdefault(today, {"count": 0, "repos": []})
-    if repo_url not in day_entry["repos"]:
-        day_entry["repos"].append(repo_url)
-        day_entry["count"] += 1
-        try:
-            with open(COUNTER_FILE, "w") as f:
-                json.dump(counter, f)
-        except Exception as e:
-            print(f"Error saving daily counter: {e}")
-
-# Helper to load analysis from cache
-def load_analysis_payload(repo_id: str) -> dict | None:
-    # Check standard cache
-    cache_file = os.path.join(CACHE_DIR, f"{repo_id}.json")
-    if os.path.exists(cache_file):
-        try:
-            with open(cache_file, "r") as f:
-                return json.load(f)
-        except Exception:
-            pass
-            
-    return None
 
 # Endpoints
 @app.get("/")
 def read_root():
     return {
-        "status": "active",
-        "message": "RepoMind API is online and running successfully. Access the frontend site to analyze repositories."
+        "service": "RepoMind API",
+        "status": "online",
+        "version": VERSION,
+        "runtime_mode": get_runtime_mode(),
+        "storage": getattr(store, "mode", "file_store"),
+        "documentation": "https://jyotiraditya21-bug.github.io/RepoMind/"
     }
+
+
+@app.get("/health")
+def health_check():
+    """Liveness probe returning operational state and active runtime mode."""
+    return {
+        "status": "ok",
+        "service": "RepoMind Backend",
+        "version": VERSION,
+        "runtime_mode": get_runtime_mode(),
+        "storage_mode": getattr(store, "mode", "file_store"),
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+    }
+
+
+@app.get("/ready")
+def readiness_check():
+    """Readiness probe verifying cache directory accessibility."""
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        test_file = os.path.join(CACHE_DIR, ".ready_check")
+        with open(test_file, "w") as f:
+            f.write("ok")
+        os.remove(test_file)
+        return {"status": "ready"}
+    except Exception as e:
+        logger.error("Readiness check failed: %s", e)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Storage not ready")
+
+
+@app.get("/version")
+def version_endpoint():
+    """Returns application semantic version information."""
+    return {
+        "name": "RepoMind",
+        "version": VERSION,
+        "runtime_mode": get_runtime_mode()
+    }
+
 
 @app.get("/demos")
 def get_demos():
-    """Returns the list of pre-baked demo repositories (now empty)."""
     return []
 
+
 @app.post("/analyze")
-def analyze_repo(request: AnalyzeRequest, req: Request):
-    """Clones a GitHub repository, computes dependencies, runs LangGraph analysis, and returns results."""
-    repo_url = request.repo_url.strip()
-    if not repo_url.startswith(("http://", "https://", "git://")) or "github.com" not in repo_url:
+def analyze_repo(request: AnalyzeRequest, req: Request, response: Response):
+    """
+    Analyzes a GitHub repository:
+      1. Validates repository URL with strict URL parser.
+      2. Checks rate limits (per-user and daily).
+      3. Checks cache for instant replay (idempotent, no double counting).
+      4. Bounded shallow clone and AST dependency graph extraction.
+      5. LangGraph multi-agent analysis (or deterministic heuristic fallback).
+      6. Persists cache atomically and updates counters.
+    """
+    client_ip = get_client_ip(req)
+    device_id = request.device_id or client_ip
+    client_identifier = f"{client_ip}:{device_id}"
+
+    # 1. URL validation
+    try:
+        canonical_url, owner, repo_name = validate_github_url(request.repo_url)
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
+
+    logger.info("Analyze request received for %s from IP %s", canonical_url, client_ip)
+
+    # 2. Rate limit pre-check
+    if not store.check_user_limit(client_identifier, USER_SEARCH_LIMIT):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid repository URL. Please provide a valid GitHub repository URL."
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"You have reached your limit of {USER_SEARCH_LIMIT} repository analyses. Please try again tomorrow."
         )
 
-    # Pre-baked demos check removed
+    if not store.check_daily_limit(DAILY_LIMIT):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Daily limit of {DAILY_LIMIT} new repository analyses reached. Please try again later."
+        )
 
-    # 2. Setup local cloning
+    # 3. Setup temporary workspace for bounded shallow clone
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
-            commit_hash = clone_repo(repo_url, temp_dir)
-        except Exception as e:
+            commit_hash = clone_repo(canonical_url, temp_dir)
+        except ValueError as ve:
+            # e.g. oversized repo
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
+        except Exception:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Failed to clone repository: {str(e)}"
+                detail=f"Failed to clone repository '{owner}/{repo_name}'. Please verify it is a public repository."
             )
-            
-        repo_id = get_repo_cache_key(repo_url, commit_hash)
-        
-        # 3. Check Cache
-        cached_payload = load_analysis_payload(repo_id)
-        if cached_payload:
-            print(f"Cache hit for {repo_url} (commit: {commit_hash})")
-            cached_payload["repo_id"] = repo_id
-            return cached_payload
-            
-        # 4. Enforce Per-User Search Limit (5 per user/IP/Device) - Bypassed/Disabled as requested
-        # client_ip = get_client_ip(req)
-        # if not check_user_limit(client_ip, request.device_id):
-        #     raise HTTPException(
-        #         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-        #         detail="You have reached your limit of 5 new repository analyses. Deploy your own backend to lift this limit!"
-        #     )
 
-        # 5. Enforce Daily Limit (exemption for pre-baked demos) - Bypassed to allow unlimited global runs with a 5-runs-per-user limit
-        # if not check_daily_limit():
-        #     raise HTTPException(
-        #         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-        #         detail="Daily limit of 10 new repository analyses reached. Try a pre-baked demo repo!"
-        #     )
-            
-        # 6. Walk Files & Filter
+        repo_id = get_repo_cache_key(canonical_url, commit_hash)
+
+        # 4. Check cache hit (idempotent, doesn't consume user counter on replay)
+        cached_payload = store.get_cache(repo_id)
+        if cached_payload:
+            logger.info("Cache hit for %s (commit %s)", canonical_url, commit_hash[:7])
+            cached_payload["repo_id"] = repo_id
+            cached_payload["cache_hit"] = True
+            cached_payload["runtime_mode"] = cached_payload.get("runtime_mode", get_runtime_mode())
+            response.headers["X-Cache"] = "HIT"
+            return cached_payload
+
+        response.headers["X-Cache"] = "MISS"
+
+        # 5. Walk Files & Filter
         file_paths = walk_repo(temp_dir)
         if not file_paths:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No supported code files found in this repository. RepoMind supports Python, JS/TS, Go, Rust, Java, C#, and C/C++."
+                detail="No supported code files found in this repository. Supported languages include Python, JS/TS, Go, Rust, Java, C#, and C/C++."
             )
-            
-        # 7. Build Dependency Graph
+
+        # 6. Build Dependency Graph
         graph_data = build_dependency_graph(temp_dir, file_paths)
-        
-        # 8. Run LangGraph Workflow
+
+        # 7. Run LangGraph Workflow (or deterministic heuristic)
+        active_mode = get_runtime_mode()
         try:
             workflow = create_agent_workflow()
             initial_state = {
-                "repo_url": repo_url,
+                "repo_url": canonical_url,
                 "commit_hash": commit_hash,
                 "repo_dir": temp_dir,
                 "file_paths": file_paths,
@@ -229,46 +235,63 @@ def analyze_repo(request: AnalyzeRequest, req: Request):
                 "rag_chunks": [],
                 "critic_issues": [],
                 "revision_count": 0,
-                "accurate": False
+                "accurate": False,
+                "runtime_mode": active_mode
             }
             final_state = workflow.invoke(initial_state)
         except Exception as e:
+            logger.error("Error executing agent workflow for %s: %s", canonical_url, e)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error running agent analysis: {str(e)}"
+                detail=f"Error executing codebase analysis: {str(e)}"
             )
-            
-        # 9. Save to Cache
+
+        # 8. Construct response payload
         cache_payload = {
+            "repo_id": repo_id,
+            "repo_url": canonical_url,
+            "commit_hash": commit_hash,
+            "owner": owner,
+            "repo": repo_name,
+            "runtime_mode": active_mode,
             "graph_data": final_state["graph_data"],
             "file_summaries": final_state["file_summaries"],
             "architecture_overview": final_state["architecture_overview"],
             "start_here": final_state["start_here"],
-            "rag_chunks": final_state["rag_chunks"]
+            "rag_chunks": final_state["rag_chunks"],
+            "cache_hit": False
         }
-        save_analysis_to_cache(repo_url, commit_hash, cache_payload)
-        
-        # 10. Increment limit counters
-        increment_daily_counter(repo_url)
-        increment_user_counter(client_ip, request.device_id)
-        
-        cache_payload["repo_id"] = repo_id
+
+        # 9. Atomic save to cache
+        store.set_cache(repo_id, cache_payload)
+
+        # 10. Increment rate counters only after successful analysis
+        store.increment_daily_counter(canonical_url)
+        store.increment_user_counter(client_identifier)
+
         return cache_payload
+
 
 @app.post("/chat")
 def chat_with_codebase(request: ChatRequest):
-    """Answers a question about a repository using cached embeddings and RAG."""
-    payload = load_analysis_payload(request.repo_id)
+    """Answers a technical question about the analyzed codebase."""
+    payload = store.get_cache(request.repo_id)
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Codebase analysis not found. Please analyze the repository first."
         )
-        
-    answer = answer_codebase_question(
+
+    res = answer_codebase_question(
         question=request.question,
         rag_chunks=payload.get("rag_chunks", []),
-        arch_overview=payload.get("architecture_overview", "")
+        arch_overview=payload.get("architecture_overview", ""),
+        repo_url=payload.get("repo_url", ""),
+        commit_hash=payload.get("commit_hash", "")
     )
-    
-    return {"answer": answer}
+
+    return {
+        "answer": res["answer"],
+        "runtime_mode": res["runtime_mode"],
+        "sources": res.get("sources", [])
+    }

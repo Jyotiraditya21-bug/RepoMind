@@ -109,7 +109,50 @@ window.addEventListener('DOMContentLoaded', () => {
     updateUsageCounter();
     renderRecentReposList();
     setupEventListeners();
+    checkBackendHealth();
 });
+
+// Runtime Mode and Health Status
+function updateRuntimeStatus(mode, isOnline = true) {
+    const statusText = document.getElementById('status-text');
+    const statusDot = document.getElementById('status-dot') || document.querySelector('.status-dot');
+    if (!statusText) return;
+    if (!isOnline) {
+        statusText.innerText = 'Backend Offline';
+        if (statusDot) {
+            statusDot.className = 'status-dot';
+            statusDot.style.background = '#ef4444';
+        }
+        return;
+    }
+    if (mode === 'AI mode') {
+        statusText.innerText = 'LangGraph AI Engine Active';
+        if (statusDot) {
+            statusDot.className = 'status-dot online';
+            statusDot.style.background = '#10b981';
+        }
+    } else {
+        statusText.innerText = 'Heuristic Mode (Deterministic AST)';
+        if (statusDot) {
+            statusDot.className = 'status-dot online';
+            statusDot.style.background = '#8b5cf6';
+        }
+    }
+}
+
+async function checkBackendHealth() {
+    try {
+        const res = await fetch(`${BACKEND_URL}/health`);
+        if (res.ok) {
+            const data = await res.json();
+            updateRuntimeStatus(data.runtime_mode, true);
+        } else {
+            updateRuntimeStatus(null, false);
+        }
+    } catch (e) {
+        updateRuntimeStatus(null, false);
+    }
+}
 
 // Event Listeners Setup
 function setupEventListeners() {
@@ -347,6 +390,10 @@ async function analyzeRepository(url) {
             : 0;
         summaryDensity.innerText = `${density}%`;
         
+        if (data.runtime_mode) {
+            updateRuntimeStatus(data.runtime_mode, true);
+        }
+
         // Compute and Draw language stats
         analyzeLanguages(data.graph_data.nodes);
         
@@ -935,6 +982,9 @@ function parseMarkdown(text) {
 
     // Bold: **text**
     html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+    // Markdown Links: [text](https://...)
+    html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:#a855f7;text-decoration:underline;font-weight:500;">$1</a>');
 
     // Bullet Lists: Convert "- Item"
     const lines = html.split('\n');

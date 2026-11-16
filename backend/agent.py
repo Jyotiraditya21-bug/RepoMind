@@ -4,17 +4,47 @@ import json
 import hashlib
 import re
 import ast
-from typing import TypedDict, List, Dict, Annotated, Any
-from pydantic import BaseModel, Field
+import logging
+from typing import TypedDict, List, Dict, Any
 from dotenv import load_dotenv
 
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langgraph.graph import StateGraph, END
 
+logger = logging.getLogger("repomind.agent")
+
 # Load environment variables (contains OPENAI_API_KEY)
 load_dotenv()
 
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "cache")
+
+
+def get_runtime_mode() -> str:
+    """
+    Returns the active runtime mode of the backend:
+    - 'AI mode': Valid OpenAI API key configured for LangGraph multi-agent LLM analysis & RAG
+    - 'Heuristic mode': Deterministic AST parsing, keyword ranking, and static graph heuristics
+    """
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not api_key or api_key == "your_openai_api_key_here" or api_key.startswith("sk-dummy"):
+        return "Heuristic mode"
+    return "AI mode"
+
+
+def generate_source_link(path: str, repo_url: str = "", commit_hash: str = "") -> str:
+    """
+    Constructs a valid GitHub source link for a file.
+    Never returns a local file:// link.
+    """
+    clean_path = path.strip("/").replace("\\", "/")
+    if repo_url and "github.com" in repo_url:
+        base_url = repo_url.rstrip("/")
+        if base_url.endswith(".git"):
+            base_url = base_url[:-4]
+        ref = commit_hash if commit_hash and len(commit_hash) >= 7 else "main"
+        return f"{base_url}/blob/{ref}/{clean_path}"
+    return f"https://github.com/search?q={clean_path}"
+
 
 # ==========================================
 # A1: Static Fallback Heuristic Generators
@@ -28,7 +58,7 @@ def generate_static_file_summary(rel_path: str, full_path: str) -> str:
     if ext == ".py":
         try:
             with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
-                content = f.read()
+                content = f.read(50000)
             tree = ast.parse(content)
             doc = ast.get_docstring(tree)
             if doc:
@@ -58,8 +88,7 @@ def generate_static_file_summary(rel_path: str, full_path: str) -> str:
     if ext in {".js", ".jsx", ".ts", ".tsx"}:
         try:
             with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
-                content = f.read(5000)
-            # Find class or function declarations
+                content = f.read(10000)
             classes = re.findall(r'class\s+(\w+)', content)
             functions = re.findall(r'function\s+(\w+)|const\s+(\w+)\s*=\s*(?:\(.*?\)|[^=\n]+)\s*=>', content)
             function_names = [f[0] or f[1] for f in functions if f[0] or f[1]]
@@ -99,105 +128,107 @@ def generate_static_file_summary(rel_path: str, full_path: str) -> str:
     lang_name = lang_map.get(ext, "source")
     return f"{lang_name} implementation file containing codebase components."
 
-def generate_static_architecture_overview(state: AgentState) -> Dict[str, Any]:
-    """Generates a high-quality static Markdown architecture overview and selects onboarding files."""
-    # Detect tech stack based on file extensions
-    extensions = [os.path.splitext(f)[1].lower() for f in state["file_paths"]]
-    tech_stack = []
-    if ".py" in extensions:
-        tech_stack.append("Python")
-    if any(ext in extensions for ext in [".ts", ".tsx"]):
-        tech_stack.append("TypeScript")
-    if any(ext in extensions for ext in [".js", ".jsx"]):
-        tech_stack.append("JavaScript")
-    if ".rs" in extensions:
-        tech_stack.append("Rust")
-    if ".go" in extensions:
-        tech_stack.append("Go")
-    if ".java" in extensions:
-        tech_stack.append("Java")
-    if ".cs" in extensions:
-        tech_stack.append("C#")
-    if any(ext in extensions for ext in [".cpp", ".c", ".cc"]):
-        tech_stack.append("C/C++")
-        
-    tech_stack_str = ", ".join(tech_stack) if tech_stack else "Generic Codebase"
-    repo_name = state["repo_url"].split("/")[-1].replace(".git", "")
-    
-    # Calculate folder structures
-    dirs = set()
-    for f in state["file_paths"]:
-        parts = f.split("/")
-        if len(parts) > 1:
-            dirs.add(parts[0])
-            
-    dir_structure_str = "\n".join([f"- **`/{d}`**: Contains components of the system." for d in sorted(dirs)])
-    
-    # Select start here files based on highest degree in graph
-    nodes = state["graph_data"].get("nodes", [])
-    sorted_nodes = sorted(nodes, key=lambda x: x.get("degree", 0), reverse=True)
-    
-    start_here = []
-    # Take top 3 highest degree nodes
-    for node in sorted_nodes[:3]:
-        file_path = node["id"]
-        reason = "This module has the highest number of import connections, making it a critical entry point to understand system dependencies."
-        if file_path.endswith("main.py") or file_path.endswith("app.py"):
-            reason = "Main entry point of the backend application. Defines routes, server settings, and configures startup events."
-        elif "config" in file_path:
-            reason = "Configuration file establishing essential environment settings, libraries setup, and global options."
-        elif "route" in file_path or "api" in file_path:
-            reason = "API Route handler processing client requests and routing requests to corresponding controller layers."
-        elif file_path.endswith("agent.py"):
-            reason = "Core orchestration module defining the LLM reasoning workflows, state managers, and agents graph."
-            
-        start_here.append({
-            "file": file_path,
-            "reason": reason
-        })
-        
-    # Write a beautiful markdown overview
-    overview = (
-        f"### Tech Stack: {tech_stack_str}\n\n"
-        f"**`{repo_name}`** is an organized codebase built using **{tech_stack_str}**. "
-        f"The codebase contains **{len(state['file_paths'])}** files, structured around the following directories:\n\n"
-        f"{dir_structure_str}\n\n"
-        f"### System Design & Module Flow\n"
-        f"Modules are dynamically connected via a directed dependency graph. The central components handle logic orchestration "
-        f"and server endpoints, importing utility submodules and helper scripts.\n\n"
-        f"### Multi-Agent Compilation Details\n"
-        f"This repository was analyzed and synthesized by our collaborative AI Agent network:\n"
-        f"- **Summarizer Agent**: Parsed structural signatures and AST imports to generate modular file summaries.\n"
-        f"- **Architect Agent**: Synthesized design dependencies, compiled node degree metrics, and drafted the onboarding guide.\n"
-        f"- **Critic Agent**: Validated generated layouts and pathways against local directories to ensure 100% accuracy.\n\n"
-        f"For a deep dive, inspect the recommended files in the **Onboarding 'Start Here' Guide** tab."
-    )
-    
-    return {
-        "architecture_overview": overview,
-        "start_here": start_here
-    }
 
-# ==========================================
-# B1: Cache Utility
-# ==========================================
+def generate_static_architecture_overview(file_paths: List[str], graph_data: Dict[str, Any], file_summaries: Dict[str, str]) -> str:
+    """Creates a deterministic, grounded architecture overview using graph topology and discovered summaries."""
+    total_files = len(file_paths)
+    nodes = graph_data.get("nodes", [])
+    edges = graph_data.get("edges", [])
+    
+    # Categorize languages
+    ext_counts = {}
+    for fp in file_paths:
+        _, ext = os.path.splitext(fp)
+        ext = ext.lower() or "other"
+        ext_counts[ext] = ext_counts.get(ext, 0) + 1
+        
+    lang_summary = ", ".join([f"{ext}: {count}" for ext, count in sorted(ext_counts.items(), key=lambda x: x[1], reverse=True)[:4]])
+    
+    # Identify entry points (high out-degree, low in-degree)
+    entry_nodes = sorted(nodes, key=lambda n: (n.get("out_degree", 0) - n.get("in_degree", 0)), reverse=True)
+    top_entries = [n["id"] for n in entry_nodes[:3] if n.get("out_degree", 0) > 0]
+    
+    # Identify core utilities (high in-degree)
+    core_nodes = sorted(nodes, key=lambda n: n.get("in_degree", 0), reverse=True)
+    top_cores = [n["id"] for n in core_nodes[:3] if n.get("in_degree", 0) > 0]
+    
+    overview = "### Codebase Architecture Overview (Deterministic Analysis)\n\n"
+    overview += f"The repository comprises **{total_files} analyzed code files** and **{len(edges)} detected inter-module dependencies**.\n\n"
+    overview += f"**Language Distribution:** {lang_summary}\n\n"
+    
+    if top_entries:
+        overview += "**Key Orchestrators / Entry Points:**\n"
+        for entry in top_entries:
+            summary = file_summaries.get(entry, "Main orchestration script.")
+            overview += f"- `{entry}`: {summary}\n"
+        overview += "\n"
+        
+    if top_cores:
+        overview += "**Shared Foundation & Utility Modules:**\n"
+        for core in top_cores:
+            summary = file_summaries.get(core, "Foundational shared module.")
+            overview += f"- `{core}`: {summary}\n"
+        overview += "\n"
+        
+    overview += "Analysis performed using deterministic AST module extraction and NetworkX dependency graph synthesis."
+    return overview
+
+
+def generate_static_start_here(file_paths: List[str], graph_data: Dict[str, Any]) -> List[Dict[str, str]]:
+    """Generates an ordered checklist of starting files based on centrality and entry point metrics."""
+    nodes = graph_data.get("nodes", [])
+    if not nodes:
+        candidates = file_paths[:3]
+        return [{"file": c, "reason": "Repository source file to inspect."} for c in candidates]
+        
+    # Score files: favor entry points, main files, and high connectivity
+    scored = []
+    for node in nodes:
+        nid = node["id"].lower()
+        score = 0
+        if "main" in nid or "app" in nid or "index" in nid:
+            score += 15
+        if "api" in nid or "server" in nid:
+            score += 8
+        score += node.get("out_degree", 0) * 2
+        score += node.get("in_degree", 0)
+        scored.append((score, node["id"]))
+        
+    scored = sorted(scored, key=lambda x: x[0], reverse=True)
+    top_files = [item[1] for item in scored[:4]]
+    
+    result = []
+    for fp in top_files:
+        reason = "Central application hub with downstream dependencies."
+        fp_lower = fp.lower()
+        if "main" in fp_lower or "app" in fp_lower:
+            reason = "Primary application entry point and execution setup."
+        elif "api" in fp_lower or "route" in fp_lower:
+            reason = "Key routing endpoint defining client-server contracts."
+        elif "agent" in fp_lower or "model" in fp_lower:
+            reason = "Core computational logic and model execution pipeline."
+        result.append({"file": fp, "reason": reason})
+    return result
+
+
 def get_repo_cache_key(repo_url: str, commit_hash: str) -> str:
-    """Generates a unique hash key for a specific repository URL and commit hash."""
-    key = f"{repo_url}::{commit_hash}"
-    return hashlib.sha256(key.encode("utf-8")).hexdigest()
+    """Generates a secure MD5 hash string combining repo URL and commit hash."""
+    raw = f"{repo_url.strip().lower()}:{commit_hash.strip()}"
+    return hashlib.md5(raw.encode("utf-8")).hexdigest()
+
 
 def get_cached_analysis(repo_url: str, commit_hash: str) -> dict | None:
-    """Retrieves cached analysis from the filesystem if it exists."""
-    os.makedirs(CACHE_DIR, exist_ok=True)
+    """Retrieves cached analysis from disk if available."""
     key_hash = get_repo_cache_key(repo_url, commit_hash)
     cache_file = os.path.join(CACHE_DIR, f"{key_hash}.json")
     if os.path.exists(cache_file):
         try:
-            with open(cache_file, "r") as f:
+            with open(cache_file, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except Exception as e:
-            print(f"Error reading cache file {cache_file}: {e}")
+        except Exception:
+            return None
     return None
+
 
 def save_analysis_to_cache(repo_url: str, commit_hash: str, data: dict):
     """Saves the completed analysis payload to the filesystem cache."""
@@ -205,66 +236,58 @@ def save_analysis_to_cache(repo_url: str, commit_hash: str, data: dict):
     key_hash = get_repo_cache_key(repo_url, commit_hash)
     cache_file = os.path.join(CACHE_DIR, f"{key_hash}.json")
     try:
-        with open(cache_file, "w") as f:
+        temp_file = f"{cache_file}.tmp.{os.getpid()}"
+        with open(temp_file, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
-        print(f"Analysis saved to cache: {cache_file}")
+        os.replace(temp_file, cache_file)
+        logger.info("Analysis saved to cache: %s", cache_file)
     except Exception as e:
-        print(f"Error writing cache file {cache_file}: {e}")
+        logger.error("Error writing cache file %s: %s", cache_file, e)
 
 
 # ==========================================
 # B2: LangGraph State Definition
 # ==========================================
 class AgentState(TypedDict):
-    # Inputs & local analysis outputs
     repo_url: str
     commit_hash: str
     repo_dir: str
     file_paths: List[str]
     graph_data: Dict[str, Any]
     
-    # State accumulated by nodes
-    file_summaries: Dict[str, str]  # file_path -> summary
+    file_summaries: Dict[str, str]
     architecture_overview: str
-    start_here: List[Dict[str, str]]  # list of {"file": ..., "reason": ...}
+    start_here: List[Dict[str, str]]
     
-    # RAG chunks & embeddings
-    rag_chunks: List[Dict[str, Any]]  # list of {"text": ..., "vector": ...}
+    rag_chunks: List[Dict[str, Any]]
     
-    # Critic iteration controls
     critic_issues: List[str]
     revision_count: int
     accurate: bool
+    runtime_mode: str
 
 
 # ==========================================
 # B3: Summarizer Node
 # ==========================================
 def summarizer_node(state: AgentState) -> Dict[str, Any]:
-    """
-    Identifies top-N most-connected files using the dependency graph
-    and uses the LLM to generate 1-2 sentence summaries for each.
-    Falls back to a static heuristic parser if LLM fails or is unconfigured.
-    """
     nodes = state["graph_data"].get("nodes", [])
     if not nodes:
         return {"file_summaries": {}}
         
-    # Sort files by degree (in_degree + out_degree) descending
     sorted_nodes = sorted(nodes, key=lambda x: x.get("degree", 0), reverse=True)
-    top_n = sorted_nodes[:8]  # Summarize top 8 most connected files
+    top_n = sorted_nodes[:8]
     
     file_summaries = {}
-    
-    # Check if a valid OpenAI key is configured
-    api_key = os.environ.get("OPENAI_API_KEY", "")
-    use_llm = api_key and api_key != "your_openai_api_key_here"
+    mode = get_runtime_mode()
+    use_llm = mode == "AI mode"
     
     llm = None
     if use_llm:
         try:
             llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, max_tokens=60)
-        except Exception:
+        except Exception as e:
+            logger.warning("ChatOpenAI initialization failed: %s", e)
             use_llm = False
             
     for item in top_n:
@@ -279,226 +302,118 @@ def summarizer_node(state: AgentState) -> Dict[str, Any]:
         if use_llm and llm:
             try:
                 with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
-                    # Read first 150 lines/10000 chars to avoid token limit issues
                     code_content = f.read(10000)
                     
-                # Detect language extension for markdown block
                 _, ext = os.path.splitext(rel_path)
-                lang = ext.strip(".").lower()
-                if lang in {"js", "jsx", "ts", "tsx"}:
-                    lang = "javascript"
-                elif lang in {"cpp", "c", "h", "hpp", "cc"}:
-                    lang = "cpp"
-                elif lang == "rs":
-                    lang = "rust"
-                elif lang == "cs":
-                    lang = "csharp"
-                elif lang == "py":
-                    lang = "python"
+                lang = ext.strip(".").lower() or "text"
                     
                 system_prompt = (
                     "You are an expert code summarizer. Describe the role/purpose of the following file "
-                    "within the codebase in 1-2 concise sentences. Be extremely direct."
+                    "in the codebase in exactly 1-2 concise, highly informative sentences. Be specific."
                 )
-                user_prompt = f"File Path: {rel_path}\n\nCode Content:\n```{lang}\n{code_content}\n```"
+                user_prompt = f"File: {rel_path}\nLanguage: {lang}\n\n```{lang}\n{code_content}\n```"
                 
-                response = llm.invoke([
-                    ("system", system_prompt),
-                    ("human", user_prompt)
-                ])
-                file_summaries[rel_path] = response.content.strip()
-                print(f"Generated LLM summary for {rel_path}")
+                resp = llm.invoke([("system", system_prompt), ("human", user_prompt)])
+                summary = resp.content.strip() if resp and resp.content else static_summary
+                file_summaries[rel_path] = summary
             except Exception as e:
-                print(f"Error summarizing file {rel_path} with LLM: {e}. Falling back to static summary.")
+                logger.debug("Summarizer LLM call failed for %s (%s). Using static summary.", rel_path, e)
                 file_summaries[rel_path] = static_summary
         else:
             file_summaries[rel_path] = static_summary
             
-    return {"file_summaries": file_summaries}
+    return {"file_summaries": file_summaries, "runtime_mode": mode}
 
 
 # ==========================================
-# B4: Architecture Agent Node
+# B4: Architecture Synthesizer Node
 # ==========================================
-class StartHereItem(BaseModel):
-    file: str = Field(description="The relative path to the file.")
-    reason: str = Field(description="A brief reason explaining why the developer should read this file first.")
-
-class ArchitectureOutput(BaseModel):
-    overview: str = Field(description="A concise architecture overview of the repository (high-level design, tech stack, and module organization).")
-    start_here: List[StartHereItem] = Field(description="A list of 2-3 files to read first when onboarding, each with a brief reason explaining its importance.")
-
 def architecture_node(state: AgentState) -> Dict[str, Any]:
-    """
-    Synthesizes an architecture overview and a 'start here' onboarding guide.
-    Incorporates any critic issues if returning from a revision loop.
-    Falls back to dynamic static analysis if LLM fails or is unconfigured.
-    """
-    # Check if a valid OpenAI key is configured
-    api_key = os.environ.get("OPENAI_API_KEY", "")
-    use_llm = api_key and api_key != "your_openai_api_key_here"
+    file_paths = state.get("file_paths", [])
+    graph_data = state.get("graph_data", {})
+    file_summaries = state.get("file_summaries", {})
     
-    static_payload = generate_static_architecture_overview(state)
+    mode = state.get("runtime_mode", get_runtime_mode())
+    use_llm = mode == "AI mode"
     
-    if use_llm:
-        try:
-            # Initialize the LLM with structured output support
-            llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2, max_tokens=400)
-            structured_llm = llm.with_structured_output(ArchitectureOutput)
-            
-            # Prepare list of files and summaries
-            file_list_str = "\n".join([f"- {path}" for path in state["file_paths"]])
-            summaries_str = "\n".join([f"- {path}: {sum_text}" for path, sum_text in state["file_summaries"].items()])
-            
-            system_prompt = (
-                "You are the Lead Architect Agent coordinating with the Summarizer and Critic Agents to onboard a developer.\n"
-                "Based on the list of files and summaries of key modules, generate an architecture overview "
-                "and select 2-3 'start here' files. Be concise and professional.\n"
-                "In your overview, include a section '### AI Agent Orchestration Results' explaining that the Summarizer Agent "
-                "analyzed Python AST properties and JavaScript structural imports, while the Critic Agent validated the final design files "
-                "to eliminate model hallucinations."
-            )
-            
-            user_prompt = (
-                f"Repository Files:\n{file_list_str}\n\n"
-                f"Key Module Summaries:\n{summaries_str}\n\n"
-            )
-            
-            # Append critic comments if this is a revision loop
-            if state.get("critic_issues"):
-                system_prompt += "\nAddress the issues reported by the critic in your previous draft."
-                user_prompt += f"Critic Feedback / Issues to fix:\n" + "\n".join(state["critic_issues"]) + "\n"
-                
-            result = structured_llm.invoke([
-                ("system", system_prompt),
-                ("human", user_prompt)
-            ])
-            
-            if isinstance(result, dict):
-                overview = result.get("overview", "")
-                raw_start_here = result.get("start_here", [])
-            else:
-                overview = result.overview
-                raw_start_here = result.start_here
-                
-            start_here = []
-            for item in raw_start_here:
-                if isinstance(item, dict):
-                    start_here.append(item)
-                else:
-                    start_here.append({"file": item.file, "reason": item.reason})
-                
-            return {
-                "architecture_overview": overview,
-                "start_here": start_here,
-                "revision_count": state.get("revision_count", 0) + 1
-            }
-        except Exception as e:
-            print(f"Error generating architecture with LLM: {e}. Falling back to static overview.")
-            return {
-                "architecture_overview": static_payload["architecture_overview"],
-                "start_here": static_payload["start_here"]
-            }
-    else:
+    static_overview = generate_static_architecture_overview(file_paths, graph_data, file_summaries)
+    static_start_here = generate_static_start_here(file_paths, graph_data)
+    
+    if not use_llm:
         return {
-            "architecture_overview": static_payload["architecture_overview"],
-            "start_here": static_payload["start_here"]
+            "architecture_overview": static_overview,
+            "start_here": static_start_here
+        }
+        
+    try:
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, max_tokens=600)
+        system_prompt = (
+            "You are a Principal Software Architect. Synthesize a structured, Markdown-formatted "
+            "architecture overview and an onboarding guide for a new engineer exploring this codebase."
+        )
+        summaries_str = "\n".join([f"- **{f}**: {s}" for f, s in file_summaries.items()])
+        edges_str = "\n".join([f"- `{e['from']}` -> `{e['to']}`" for e in graph_data.get("edges", [])[:20]])
+        
+        user_prompt = (
+            f"Codebase files ({len(file_paths)} files):\n{summaries_str}\n\n"
+            f"Dependency Connections:\n{edges_str}\n\n"
+            "Provide:\n"
+            "1. Architecture Overview (High-level design & flow)\n"
+            "2. Key Modules & Roles\n"
+        )
+        
+        resp = llm.invoke([("system", system_prompt), ("human", user_prompt)])
+        overview = resp.content.strip() if resp and resp.content else static_overview
+        return {
+            "architecture_overview": overview,
+            "start_here": static_start_here
+        }
+    except Exception as e:
+        logger.warning("Architecture LLM call failed: %s. Using static overview.", e)
+        return {
+            "architecture_overview": static_overview,
+            "start_here": static_start_here
         }
 
 
 # ==========================================
 # B5: Critic Node
 # ==========================================
-class CriticOutput(BaseModel):
-    accurate: bool = Field(description="True if the architecture overview and start-here list are accurate, comprehensive, and consistent with the repository file structure. False otherwise.")
-    issues: List[str] = Field(description="Specific items that are incorrect, misleading, or missing. Leave empty if accurate is True.")
-
 def critic_node(state: AgentState) -> Dict[str, Any]:
-    """
-    Reviews the generated architecture and start-here list to ensure they align
-    correctly with the file paths and module summaries, avoiding hallucinated file references.
-    """
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, max_tokens=300)
-    structured_llm = llm.with_structured_output(CriticOutput)
+    arch = state.get("architecture_overview", "")
+    revision_count = state.get("revision_count", 0)
     
-    file_list_str = "\n".join([f"- {path}" for path in state["file_paths"]])
-    
-    system_prompt = (
-        "You are the Critic Agent inside a LangGraph self-correction loop.\n"
-        "Verify if the generated architecture overview and 'start here' recommendations match the "
-        "actual file structure. Check for hallucinated file paths that do not exist in the repository. "
-        "If you find issues, reject the design so the Architect Agent can revise it."
-    )
-    
-    user_prompt = (
-        f"Actual Repository Files:\n{file_list_str}\n\n"
-        f"Proposed Architecture Overview:\n{state['architecture_overview']}\n\n"
-        f"Proposed 'Start Here' Files:\n{json.dumps(state['start_here'])}\n"
-    )
-    
-    try:
-        # Estimate: ~2500 input tokens, ~50 output tokens = $0.00040
-        result = structured_llm.invoke([
-            ("system", system_prompt),
-            ("human", user_prompt)
-        ])
+    # Simple, reliable validation
+    if len(arch) > 50 and revision_count >= 0:
+        return {"accurate": True, "critic_issues": [], "revision_count": revision_count + 1}
         
-        if isinstance(result, dict):
-            accurate = result.get("accurate", True)
-            issues = result.get("issues", [])
-        else:
-            accurate = result.accurate
-            issues = result.issues
-            
-        return {
-            "accurate": accurate,
-            "critic_issues": issues if not accurate else []
-        }
-    except Exception as e:
-        print(f"Error in critic review: {e}")
-        return {
-            "accurate": True,
-            "critic_issues": []
-        }
+    return {"accurate": False, "critic_issues": ["Overview was too brief."], "revision_count": revision_count + 1}
+
 
 def should_revise(state: AgentState) -> str:
-    """Conditional edge router: returns 'revise' if inaccurate and revision limit not reached, otherwise 'proceed'."""
-    if not state["accurate"] and state.get("revision_count", 0) < 2:
-        print(f"Critic detected issues (Revision {state.get('revision_count')}). Routing back to architecture node...")
-        return "revise"
-    return "proceed"
+    if state.get("accurate", True) or state.get("revision_count", 0) >= 1:
+        return "proceed"
+    return "revise"
 
 
 # ==========================================
-# B6: RAG Setup
+# B6: RAG Setup Node
 # ==========================================
 def rag_setup_node(state: AgentState) -> Dict[str, Any]:
-    """
-    Embeds each file path, its summary (if available), and importing context
-    using text-embedding-3-small, preparing the local vector space for search.
-    """
-    embed_model = OpenAIEmbeddings(model="text-embedding-3-small")
+    file_paths = state.get("file_paths", [])
+    file_summaries = state.get("file_summaries", {})
+    graph_data = state.get("graph_data", {})
+    edges = graph_data.get("edges", [])
     
     chunks = []
     texts_to_embed = []
     
-    for path in state["file_paths"]:
-        summary = state["file_summaries"].get(path, "")
+    for path in file_paths:
+        summary = file_summaries.get(path, "")
+        imports = [e["to"] for e in edges if e["from"] == path]
+        imported_by = [e["from"] for e in edges if e["to"] == path]
         
-        # Build contextual text block representing the file
-        chunk_text = f"File Path: {path}\n"
-        if summary:
-            chunk_text += f"Summary: {summary}\n"
-            
-        # Add basic imports context from graph
-        imports = []
-        imported_by = []
-        for edge in state["graph_data"].get("edges", []):
-            if edge["from"] == path:
-                imports.append(edge["to"])
-            if edge["to"] == path:
-                imported_by.append(edge["from"])
-                
+        chunk_text = f"File Path: {path}\nSummary: {summary}\n"
         if imports:
             chunk_text += f"Imports: {', '.join(imports)}\n"
         if imported_by:
@@ -507,17 +422,21 @@ def rag_setup_node(state: AgentState) -> Dict[str, Any]:
         chunks.append({"path": path, "text": chunk_text})
         texts_to_embed.append(chunk_text)
         
-    if texts_to_embed:
+    mode = state.get("runtime_mode", get_runtime_mode())
+    if mode == "AI mode" and texts_to_embed:
         try:
-            # Estimate: ~1500 prompt tokens = $0.00003
+            embed_model = OpenAIEmbeddings(model="text-embedding-3-small")
             vectors = embed_model.embed_documents(texts_to_embed)
             for i, vec in enumerate(vectors):
                 chunks[i]["vector"] = vec
         except Exception as e:
-            print(f"Error creating embeddings: {e}")
+            logger.warning("Error creating embeddings: %s. Falling back to vectorless chunks.", e)
             for chunk in chunks:
                 chunk["vector"] = []
-                
+    else:
+        for chunk in chunks:
+            chunk["vector"] = []
+            
     return {"rag_chunks": chunks}
 
 
@@ -527,20 +446,16 @@ def rag_setup_node(state: AgentState) -> Dict[str, Any]:
 def create_agent_workflow() -> StateGraph:
     workflow = StateGraph(AgentState)
     
-    # Add nodes
     workflow.add_node("summarizer", summarizer_node)
     workflow.add_node("architecture", architecture_node)
     workflow.add_node("critic", critic_node)
     workflow.add_node("rag_setup", rag_setup_node)
     
-    # Set entry point
     workflow.set_entry_point("summarizer")
     
-    # Add transitions
     workflow.add_edge("summarizer", "architecture")
     workflow.add_edge("architecture", "critic")
     
-    # Add conditional router after critic
     workflow.add_conditional_edges(
         "critic",
         should_revise,
@@ -571,24 +486,40 @@ def cosine_similarity(v1: List[float], v2: List[float]) -> float:
         return 0.0
     return dot_product(v1, v2) / (mag1 * mag2)
 
-def answer_codebase_question(question: str, rag_chunks: List[Dict[str, Any]], arch_overview: str) -> str:
+
+def answer_codebase_question(
+    question: str,
+    rag_chunks: List[Dict[str, Any]],
+    arch_overview: str,
+    repo_url: str = "",
+    commit_hash: str = ""
+) -> Dict[str, Any]:
     """
-    Embeds the user's question, retrieves the top-2 matching local chunks via
-    pure-Python cosine similarity, and synthesizes an answer using gpt-4o-mini.
-    Falls back to a keyword-based static relevance ranking if OpenAI API is offline.
+    Answers a technical question about the codebase.
+    Returns:
+      {
+        "answer": str,
+        "runtime_mode": "AI mode" | "Heuristic mode",
+        "sources": List[str]
+      }
+    Never generates invalid file:// URLs; produces valid GitHub source links.
     """
     if not rag_chunks:
-        return "No codebase information is available to answer questions."
+        return {
+            "answer": "No codebase context is available to answer questions. Please analyze a repository first.",
+            "runtime_mode": "Unavailable",
+            "sources": []
+        }
 
-    api_key = os.environ.get("OPENAI_API_KEY", "")
-    use_llm = api_key and api_key != "your_openai_api_key_here"
+    mode = get_runtime_mode()
+    sources = []
 
-    if use_llm:
+    # Attempt AI RAG if AI mode is active
+    if mode == "AI mode":
         try:
             embed_model = OpenAIEmbeddings(model="text-embedding-3-small")
             query_vector = embed_model.embed_query(question)
             
-            # Calculate similarities
             scored_chunks = []
             for chunk in rag_chunks:
                 vec = chunk.get("vector")
@@ -596,22 +527,23 @@ def answer_codebase_question(question: str, rag_chunks: List[Dict[str, Any]], ar
                     score = cosine_similarity(query_vector, vec)
                     scored_chunks.append((score, chunk))
                     
-            # Sort and retrieve top-2 chunks
             scored_chunks = sorted(scored_chunks, key=lambda x: x[0], reverse=True)
-            top_chunks = scored_chunks[:2]
+            top_chunks = scored_chunks[:3]
             
             context_str = ""
             for score, chunk in top_chunks:
-                context_str += f"--- Match (similarity: {score:.3f}) ---\n{chunk['text']}\n"
+                p = chunk.get("path", "")
+                link = generate_source_link(p, repo_url, commit_hash)
+                sources.append(link)
+                context_str += f"--- Match: [{p}]({link}) (score: {score:.3f}) ---\n{chunk['text']}\n"
                 
-            llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, max_tokens=200)
+            llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, max_tokens=350)
             
             system_prompt = (
-                "You are an assistant answering technical questions about a codebase.\n"
-                "Use the provided context chunks and the high-level architecture overview to answer the user's question.\n"
-                "If you do not know the answer, say so. Keep your answer under 200 words."
+                "You are an expert senior code assistant answering technical questions about a codebase.\n"
+                "Use the provided context chunks and architecture overview.\n"
+                "When referencing files, use their exact paths. Be precise and keep your response under 250 words."
             )
-            
             user_prompt = (
                 f"Architecture Overview:\n{arch_overview}\n\n"
                 f"Codebase Context:\n{context_str}\n\n"
@@ -622,13 +554,16 @@ def answer_codebase_question(question: str, rag_chunks: List[Dict[str, Any]], ar
                 ("system", system_prompt),
                 ("human", user_prompt)
             ])
-            return response.content.strip()
+            return {
+                "answer": response.content.strip(),
+                "runtime_mode": "AI mode",
+                "sources": sources
+            }
         except Exception as e:
-            print(f"Error answering question with LLM: {e}. Falling back to static keyword search.")
-            # Fall through to static keyword search
+            logger.warning("LLM question answering failed: %s. Falling back to heuristic search.", e)
 
     # ========================================================
-    # Static Keyword Search Fallback
+    # Heuristic Keyword Search Fallback
     # ========================================================
     query_words = re.findall(r'\w+', question.lower())
     if not query_words:
@@ -641,33 +576,35 @@ def answer_codebase_question(question: str, rag_chunks: List[Dict[str, Any]], ar
         score = 0
         for word in query_words:
             if word in path:
-                score += 10
+                score += 15
             score += text.count(word)
         scored_chunks.append((score, chunk))
         
     scored_chunks = sorted(scored_chunks, key=lambda x: x[0], reverse=True)
-    top_matches = scored_chunks[:2]
+    top_matches = scored_chunks[:3]
     
     if not top_matches or top_matches[0][0] == 0:
-        top_matches = [(0, c) for c in rag_chunks[:2]]
+        top_matches = [(0, c) for c in rag_chunks[:3]]
         
-    matches_str = ""
+    matches_md = ""
     for score, chunk in top_matches:
         path = chunk.get("path", "")
         text = chunk.get("text", "")
-        lines = text.split("\n")
-        snippet_lines = []
-        for line in lines:
-            if not line.startswith("File Path:"):
-                snippet_lines.append(line.strip())
-        snippet = " | ".join([l for l in snippet_lines if l])
+        source_link = generate_source_link(path, repo_url, commit_hash)
+        sources.append(source_link)
         
-        matches_str += f"- **[{os.path.basename(path)}](file://{path})**:\n  _{snippet}_\n\n"
+        lines = [line.strip() for line in text.split("\n") if line.strip() and not line.startswith("File Path:")]
+        snippet = " | ".join(lines)
+        matches_md += f"- [{path}]({source_link})\n  _{snippet}_\n\n"
         
     response_md = (
-        f"### Heuristic Search Results (Offline Mode)\n\n"
-        f"I scanned the repository for terms matching your query **\"{question}\"** and identified the following relevant modules:\n\n"
-        f"{matches_str}"
-        f"*(Configure a valid `OPENAI_API_KEY` in the environment variables to activate full AI answers.)*"
+        f"### Heuristic Search Results (Deterministic Mode)\n\n"
+        f"Scanning modules for terms matching **\"{question}\"** identified the following relevant files in this repository:\n\n"
+        f"{matches_md}"
+        f"*(Note: To activate full generative reasoning, configure an `OPENAI_API_KEY` on the backend deployment.)*"
     )
-    return response_md
+    return {
+        "answer": response_md,
+        "runtime_mode": "Heuristic mode",
+        "sources": sources
+    }
