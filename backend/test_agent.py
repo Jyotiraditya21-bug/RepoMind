@@ -1,22 +1,15 @@
 import os
 import shutil
 import tempfile
-from analyzer import clone_repo, walk_repo, build_dependency_graph
+from analyzer import walk_repo, build_dependency_graph
 from agent import create_agent_workflow, get_cached_analysis, save_analysis_to_cache, answer_codebase_question
 
 def run_test():
-    repo_url = "/Users/jimmycodes/RepoMind" # Using local repo path for instant testing
+    repo_url = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    commit_hash = "local_test_hash"
     
     with tempfile.TemporaryDirectory() as temp_dir:
-        # Step A2: Shallow clone
-        try:
-            commit_hash = clone_repo(repo_url, temp_dir)
-        except Exception as e:
-            print(f"Cloning failed (likely not initialized as a git repo yet): {e}")
-            # Fallback to local files directly for test purposes
-            commit_hash = "local_test_hash"
-            shutil.copytree(repo_url, temp_dir, dirs_exist_ok=True, ignore=shutil.ignore_patterns(".git", "venv", ".venv", "__pycache__", "cache"))
-            
+        shutil.copytree(repo_url, temp_dir, dirs_exist_ok=True, ignore=shutil.ignore_patterns(".git", "venv", ".venv", "__pycache__", "cache"))
         print(f"Target Commit Hash: {commit_hash}")
         
         # Check cache first
